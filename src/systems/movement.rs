@@ -3,6 +3,7 @@ use bevy::prelude::*;
 #[derive(Component)]
 pub struct Movement {
   pub target: Option<Vec2>,
+  pub last_direction: Vec2,
   pub speed: f32,
   pub enabled: bool,
 }
@@ -14,14 +15,17 @@ fn movement(time: Res<Time>, mut qry: Query<(&mut Movement, &mut Transform)>) {
     }
 
     if let Some(target) = mov.target {
-      let diff: Vec3 = transform.translation - Vec3::from((target, 0.));
+      let diff = transform.translation.truncate() - target;
       let factor = mov.speed * time.delta_seconds();
+      let z = transform.translation.z;
+
+      mov.last_direction = diff.normalize() * -1.;
 
       if diff.length() <= factor {
-        transform.translation = Vec3::from((target, 0.));
+        transform.translation = Vec3::from((target, z));
         mov.target = None;
       } else {
-        transform.translation -= diff.normalize() * factor;
+        transform.translation -= Vec3::from((diff, 0.)).normalize() * factor;
       }
     }
   }

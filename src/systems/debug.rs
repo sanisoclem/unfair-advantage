@@ -1,6 +1,9 @@
+use crate::systems::Movement;
 use bevy::{app::AppExit, prelude::*};
 use bevy_egui::{egui, EguiContext};
 use std::collections::VecDeque;
+
+use crate::game::player::PlayerComponent;
 
 pub enum DebugCmdEvents {
   Print(String),
@@ -16,6 +19,7 @@ impl Plugin for DebugPlugin {
       .init_resource::<DebugConsole>()
       .add_event::<DebugCmdEvents>()
       .add_system(debug_gui)
+      .add_system(debug_player)
       .add_system(cmd_handler);
   }
 }
@@ -119,5 +123,35 @@ fn cmd_handler(
         dbg_state.output.push_front(msg.clone());
       }
     }
+  }
+}
+
+fn debug_player(
+  mut egui_ctx: ResMut<EguiContext>,
+  mut qry_player: Query<(&PlayerComponent, &mut Transform, &Movement)>,
+) {
+  let ctx = egui_ctx.ctx_mut();
+  if let Ok((_, mut transform, movement)) = qry_player.get_single_mut() {
+    egui::Window::new("Player").vscroll(true).show(ctx, |ui| {
+      egui::Grid::new("player_grid")
+        .num_columns(2)
+        .spacing([40.0, 4.0])
+        .striped(true)
+        .show(ui, |ui| {
+          ui.label(format!("x {:?}", transform.translation.x));
+          //ui.add(egui::TextEdit::singleline(transform.translation.x));
+          ui.end_row();
+          ui.label(format!("y {:?}", transform.translation.y));
+          //ui.add(egui::TextEdit::singleline(transform.translation.y));
+          ui.end_row();
+          ui.label(format!("z {:?}", transform.translation.z));
+          //ui.add(egui::TextEdit::singleline(transform.translation.z));
+          ui.end_row();
+          ui.label(format!("last x {:?}", movement.last_direction.x));
+          ui.end_row();
+          ui.label(format!("last y {:?}", movement.last_direction.y));
+          ui.end_row();
+        });
+    });
   }
 }

@@ -14,7 +14,7 @@ fn set_mouse_info(
   q_camera: Query<(&Camera, &GlobalTransform, &MainCamera)>,
 ) {
   let window = windows.get_primary().expect("should have a primary window");
-  for (camera, camera_transform, _) in q_camera.iter() {
+  if let Ok((camera, camera_transform, _)) = q_camera.get_single() {
     if let Some(pos) = window.cursor_position() {
       // get the size of the window
       let window_size = Vec2::new(window.width() as f32, window.height() as f32);

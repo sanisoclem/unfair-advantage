@@ -1,6 +1,8 @@
 use super::player::PlayerState;
 use crate::systems::cleanup_system;
-use bevy::prelude::*;
+use bevy::{prelude::*, render::render_resource::TextureUsages};
+use bevy_ecs_tilemap::prelude::*;
+use rand::{thread_rng, Rng};
 use std::{fmt::Debug, hash::Hash};
 
 #[derive(Clone, Eq, PartialEq, Debug, Hash)]
@@ -18,7 +20,47 @@ fn setup_test_level(
   asset_server: Res<AssetServer>,
   mut texture_atlases: ResMut<Assets<TextureAtlas>>,
   mut player_state: ResMut<State<PlayerState>>,
+  mut map_query: MapQuery,
 ) {
+  let texture_handle = asset_server.load("pack1/TX Tileset Grass.png");
+  let map_size = MapSize(20, 20);
+
+  let layer_settings = LayerSettings::new(
+    map_size,
+    ChunkSize(32, 32),
+    TileSize(16.0, 16.0),
+    TextureSize(256.0, 256.0),
+  );
+
+  let (mut layer_builder, layer_0_entity) =
+    LayerBuilder::<TileBundle>::new(&mut commands, layer_settings.clone(), 0u16, 0u16);
+
+  layer_builder.set_all(
+    Tile {
+      texture_index: 165,
+      ..Default::default()
+    }
+    .into(),
+  );
+
+  map_query.build_layer(&mut commands, layer_builder, texture_handle);
+
+
+  // Create map entity and component:
+  let map_entity = commands.spawn().id();
+  let mut map = Map::new(0u16, map_entity);
+
+  // Required to keep track of layers for a map internally.
+  map.add_layer(&mut commands, 0u16, layer_0_entity);
+
+  // Spawn Map
+  // Required in order to use map_query to retrieve layers/tiles.
+  commands
+    .entity(map_entity)
+    .insert(map)
+    .insert(Transform::from_xyz(-5120.0, -5120.0, 0.0).with_scale(Vec3::splat(6.0)))
+    .insert(GlobalTransform::default());
+
   player_state
     .set(PlayerState::Active)
     .expect("set player state should always succeed");
@@ -30,11 +72,31 @@ fn teardown_level(mut player_state: ResMut<State<PlayerState>>) {
     .expect("set player state should always succeed");
 }
 
+pub fn set_texture_filters_to_nearest(
+  mut texture_events: EventReader<AssetEvent<Image>>,
+  mut textures: ResMut<Assets<Image>>,
+) {
+  // quick and dirty, run this for all textures anytime a texture is created.
+  for event in texture_events.iter() {
+    match event {
+      AssetEvent::Created { handle } => {
+        if let Some(mut texture) = textures.get_mut(handle) {
+          texture.texture_descriptor.usage =
+            TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_SRC | TextureUsages::COPY_DST;
+        }
+      }
+      _ => (),
+    }
+  }
+}
+
 pub struct LevelPlugin;
 impl Plugin for LevelPlugin {
   fn build(&self, app: &mut App) {
     app
+      .add_plugin(TilemapPlugin)
       .add_state(LevelState::Disabled)
+      .add_system(set_texture_filters_to_nearest)
       .add_system_set(SystemSet::on_enter(LevelState::TestLevel).with_system(setup_test_level))
       .add_system_set(
         SystemSet::on_exit(LevelState::TestLevel)

@@ -7,7 +7,8 @@ pub struct SplashPlugin;
 
 impl Plugin for SplashPlugin {
   fn build(&self, app: &mut App) {
-    // As this plugin is managing the splash screen, it will focus on the state `GameState::Splash`
+    // As this plugin is managing the splash screen, it will focus on the state
+    // `GameState::Splash`
     app
       // When entering the state, spawn everything needed for this screen
       .add_system_set(SystemSet::on_enter(GameState::Splash).with_system(splash_setup))

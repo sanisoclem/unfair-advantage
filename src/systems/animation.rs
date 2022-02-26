@@ -2,8 +2,8 @@ use bevy::prelude::*;
 
 #[derive(Component)]
 pub struct Animation {
-  timer: Timer,
-  enabled: bool,
+  pub timer: Timer,
+  pub enabled: bool,
 }
 impl Animation {
   pub fn new(fps: f32, enabled: bool) -> Self {
@@ -11,9 +11,6 @@ impl Animation {
       timer: Timer::from_seconds(1. / fps, true),
       enabled,
     }
-  }
-  pub fn enable(&mut self, enabled: bool) {
-    self.enabled = enabled;
   }
 }
 

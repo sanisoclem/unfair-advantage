@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 use std::{fmt::Debug, hash::Hash};
 
-use crate::systems::{Animation, MouseInfo, Movement};
+use super::{mouse::MouseInfo, movement::Movement};
+use crate::animation::Animation;
 
 pub struct PlayerPlugin<T, TState> {
   pub tag: T,
@@ -44,7 +45,6 @@ where
       end_state,
     }
   }
-
   fn setup_player(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -53,6 +53,10 @@ where
     let texture_handle = asset_server.load("run.png");
     let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(24.0, 24.0), 7, 1);
     let texture_atlas_handle = texture_atlases.add(texture_atlas);
+
+    commands
+      .spawn_bundle(OrthographicCameraBundle::new_2d())
+      .insert(T::default());
 
     commands
       .spawn_bundle(SpriteSheetBundle {
@@ -90,7 +94,7 @@ where
           for (mut _player, mut mov) in qry.iter_mut() {
             mov.target = Some(pos.clone());
           }
-        }
+        },
       }
     }
   }

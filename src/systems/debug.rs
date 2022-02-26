@@ -1,11 +1,11 @@
-use bevy::app::AppExit;
-use bevy::prelude::*;
+use bevy::{app::AppExit, prelude::*};
 use bevy_egui::{egui, EguiContext};
 use std::collections::VecDeque;
 
 pub enum DebugCmdEvents {
+  Print(String),
+  Unknown(String),
   Exit,
-  Unknown(String)
 }
 
 #[derive(Default)]
@@ -36,9 +36,7 @@ impl DebugConsole {
     let cur_cmd = std::mem::replace(&mut self.cmd_buffer, String::default());
     let evt = match cur_cmd.as_str() {
       "exit" | "quit" | "q" => DebugCmdEvents::Exit,
-      _ => {
-        DebugCmdEvents::Unknown(cur_cmd.clone())
-      }
+      _ => DebugCmdEvents::Unknown(cur_cmd.clone()),
     };
 
     println!("Invocing cmd: {:?}", cur_cmd);
@@ -56,7 +54,11 @@ fn dark_light_mode_switch(ui: &mut egui::Ui) {
   }
 }
 
-fn debug_gui(mut egui_context: ResMut<EguiContext>, mut dbg_state: ResMut<DebugConsole>, dbg_events: EventWriter<DebugCmdEvents>) {
+fn debug_gui(
+  mut egui_context: ResMut<EguiContext>,
+  mut dbg_state: ResMut<DebugConsole>,
+  dbg_events: EventWriter<DebugCmdEvents>,
+) {
   let ctx = egui_context.ctx_mut();
   let toggle_console = ctx.input().key_pressed(egui::Key::Tab);
 
@@ -100,14 +102,21 @@ fn debug_gui(mut egui_context: ResMut<EguiContext>, mut dbg_state: ResMut<DebugC
   }
 }
 
-fn cmd_handler(mut events: EventReader<DebugCmdEvents>, mut app_exit_events: EventWriter<AppExit>, mut dbg_state: ResMut<DebugConsole>) {
+fn cmd_handler(
+  mut events: EventReader<DebugCmdEvents>,
+  mut app_exit_events: EventWriter<AppExit>,
+  mut dbg_state: ResMut<DebugConsole>,
+) {
   for evt in events.iter() {
     match evt {
-      DebugCmdEvents::Exit => {
-        app_exit_events.send(AppExit)
-      }
+      DebugCmdEvents::Exit => app_exit_events.send(AppExit),
       DebugCmdEvents::Unknown(cmd) => {
-        dbg_state.output.push_front(format!("Unknown command: {}", cmd));
+        dbg_state
+          .output
+          .push_front(format!("Unknown command: {}", cmd));
+      }
+      DebugCmdEvents::Print(msg) => {
+        dbg_state.output.push_front(msg.clone());
       }
     }
   }

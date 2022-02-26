@@ -1,4 +1,4 @@
-use super::OnGameScreen;
+use super::MainCamera;
 use bevy::prelude::*;
 
 #[derive(Default)]
@@ -11,7 +11,7 @@ pub struct MouseInfo {
 fn set_mouse_info(
   mut mouse_info: ResMut<MouseInfo>,
   windows: Res<Windows>,
-  q_camera: Query<(&Camera, &GlobalTransform, &OnGameScreen)>,
+  q_camera: Query<(&Camera, &GlobalTransform, &MainCamera)>,
 ) {
   let window = windows.get_primary().expect("should have a primary window");
   for (camera, camera_transform, _) in q_camera.iter() {

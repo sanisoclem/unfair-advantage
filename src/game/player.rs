@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use std::{fmt::Debug, hash::Hash};
 
-use crate::systems::{Animation, MouseInfo, Movement, CameraTarget, cleanup_system};
+use crate::systems::{cleanup_system, CameraTarget, MouseInfo, Movement};
 
 #[derive(Clone, Eq, PartialEq, Debug, Hash)]
 pub enum PlayerState {
@@ -14,15 +14,11 @@ pub struct PlayerPlugin;
 #[derive(Component)]
 pub struct PlayerComponent;
 
-pub enum PlayerAction {
-  Move(Vec2),
-}
 
 impl Plugin for PlayerPlugin {
   fn build(&self, app: &mut App) {
     app
       .add_state(PlayerState::Despawned)
-      .add_event::<PlayerAction>()
       .add_system_set(
         SystemSet::on_enter(PlayerState::Despawned).with_system(cleanup_system::<PlayerComponent>),
       )
@@ -31,7 +27,6 @@ impl Plugin for PlayerPlugin {
         SystemSet::on_update(PlayerState::Active)
           .with_system(read_input)
           .with_system(face_player)
-          .with_system(execute_player_actions),
       );
   }
 }
@@ -47,8 +42,9 @@ fn spawn_player(
 
   commands
     .spawn_bundle(SpriteSheetBundle {
-      texture_atlas: texture_atlas_handle,
-      transform: Transform::from_scale(Vec3::splat(6.0)).with_translation(Vec3::new(0.0, 0.0, 100.0)),
+      texture_atlas: texture_atlas_handle.clone(),
+      transform: Transform::from_scale(Vec3::splat(3.0))
+        .with_translation(Vec3::new(0.0, 0.0, 100.0)),
       ..Default::default()
     })
     .insert(PlayerComponent)
@@ -58,8 +54,19 @@ fn spawn_player(
       speed: 500.0,
       enabled: true,
       target: None,
+    })
+    .with_children(|parent| {
+      // shadow
+      parent.spawn_bundle(SpriteSheetBundle {
+        texture_atlas: texture_atlas_handle,
+        transform: Transform::from_translation(Vec3::new(0.0, 0.0, -1.0)),
+        sprite: TextureAtlasSprite {
+          index: 3,
+          ..Default::default()
+        },
+        ..Default::default()
+      });
     });
-    //.insert(Animation::new(10., true));
 }
 fn face_player(mut qry: Query<(&PlayerComponent, &Movement, &mut TextureAtlasSprite)>) {
   if let Ok((_, mov, mut sprite)) = qry.get_single_mut() {
@@ -83,27 +90,15 @@ fn face_player(mut qry: Query<(&PlayerComponent, &Movement, &mut TextureAtlasSpr
     }
   }
 }
+
 fn read_input(
   mouse_button_input: Res<Input<MouseButton>>,
   mouse_info: Res<MouseInfo>,
-  mut player_events: EventWriter<PlayerAction>,
-) {
-  if mouse_button_input.just_pressed(MouseButton::Left) {
-    player_events.send(PlayerAction::Move(mouse_info.world_pos2));
-  }
-}
-
-fn execute_player_actions(
   mut qry: Query<(&PlayerComponent, &mut Movement)>,
-  mut events: EventReader<PlayerAction>,
 ) {
-  for evt in events.iter() {
-    match evt {
-      PlayerAction::Move(pos) => {
-        for (mut _player, mut mov) in qry.iter_mut() {
-          mov.target = Some(pos.clone());
-        }
-      }
+  if let Ok((_player, mut mov))  =  qry.get_single_mut() {
+    if mouse_button_input.just_pressed(MouseButton::Left) {
+      mov.target = Some(mouse_info.world_pos2);
     }
   }
 }

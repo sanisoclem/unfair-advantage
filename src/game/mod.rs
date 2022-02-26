@@ -3,11 +3,13 @@ use bevy::prelude::*;
 
 pub mod level;
 pub mod player;
+pub mod enemy;
 
 pub struct GamePlugin;
 impl Plugin for GamePlugin {
   fn build(&self, app: &mut App) {
     app
+      .add_plugin(enemy::EnemyPlugin)
       .add_plugin(level::LevelPlugin)
       .add_plugin(player::PlayerPlugin)
       .add_system_set(SystemSet::on_enter(GameState::Game).with_system(load_test_level))

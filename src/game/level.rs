@@ -1,8 +1,10 @@
-use super::player::PlayerState;
+use super::{
+  enemy::{EnemyCommand, EnemyType},
+  player::PlayerState,
+};
 use crate::systems::cleanup_system;
 use bevy::{prelude::*, render::render_resource::TextureUsages};
 use bevy_ecs_tilemap::prelude::*;
-use rand::{thread_rng, Rng};
 use std::{fmt::Debug, hash::Hash};
 
 #[derive(Clone, Eq, PartialEq, Debug, Hash)]
@@ -18,9 +20,9 @@ pub struct LevelTag;
 fn setup_test_level(
   mut commands: Commands,
   asset_server: Res<AssetServer>,
-  mut texture_atlases: ResMut<Assets<TextureAtlas>>,
   mut player_state: ResMut<State<PlayerState>>,
   mut map_query: MapQuery,
+  mut enemy_cmd: EventWriter<EnemyCommand>,
 ) {
   let texture_handle = asset_server.load("pack1/TX Tileset Grass.png");
   let map_size = MapSize(20, 20);
@@ -37,14 +39,13 @@ fn setup_test_level(
 
   layer_builder.set_all(
     Tile {
-      texture_index: 165,
+      texture_index: 75,
       ..Default::default()
     }
     .into(),
   );
 
   map_query.build_layer(&mut commands, layer_builder, texture_handle);
-
 
   // Create map entity and component:
   let map_entity = commands.spawn().id();
@@ -58,12 +59,22 @@ fn setup_test_level(
   commands
     .entity(map_entity)
     .insert(map)
-    .insert(Transform::from_xyz(-5120.0, -5120.0, 0.0).with_scale(Vec3::splat(6.0)))
+    .insert(Transform::from_xyz(-5120.0, -5120.0, 0.0).with_scale(Vec3::splat(3.0)))
     .insert(GlobalTransform::default());
 
   player_state
     .set(PlayerState::Active)
     .expect("set player state should always succeed");
+
+  for i in 20..70 {
+    let r = 10;
+    let sz = 16.;
+    let scale = 3.;
+    enemy_cmd.send(EnemyCommand::Spawn(
+      EnemyType::Slime,
+      Vec3::new(((r as f32 /-2. * sz)  + (((i % r) as f32) * sz)) *scale, ((((i/r) as f32) * sz)) *scale, 100.0),
+    ));
+  }
 }
 
 fn teardown_level(mut player_state: ResMut<State<PlayerState>>) {

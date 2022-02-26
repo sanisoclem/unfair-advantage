@@ -1,3 +1,5 @@
+use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
+use bevy::diagnostic::LogDiagnosticsPlugin;
 use bevy_egui::EguiPlugin;
 use bevy::prelude::*;
 
@@ -20,14 +22,18 @@ enum GameState {
 fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
-            title: "Refresher".to_string(),
+            title: "OP".to_string(),
             width: 1920.,
             height: 1080.,
             ..Default::default()
         })
+        .insert_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
         .add_state(GameState::Game)
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
+        .add_plugin(LogDiagnosticsPlugin::default())
+        .add_plugin(FrameTimeDiagnosticsPlugin::default())
+
         .add_plugin(audio::AudioPlugin)
         .add_plugin(animation::AnimationPlugin)
         .add_plugin(debug::DebugPlugin)

@@ -1,6 +1,8 @@
-use crate::animation::AnimationComponent;
 use bevy::prelude::*;
 use std::{fmt::Debug, hash::Hash};
+
+use super::{mouse::MouseInfo, movement::Movement};
+use crate::animation::Animation;
 
 pub struct PlayerPlugin<T, TState> {
   pub tag: T,
@@ -11,6 +13,10 @@ pub struct PlayerPlugin<T, TState> {
 #[derive(Component)]
 pub struct PlayerComponent;
 
+pub enum PlayerAction {
+  Move(Vec2),
+}
+
 impl<T, TState> Plugin for PlayerPlugin<T, TState>
 where
   T: Component + Default,
@@ -18,8 +24,13 @@ where
 {
   fn build(&self, app: &mut App) {
     app
+      .add_event::<PlayerAction>()
       .add_system_set(SystemSet::on_enter(self.game_state).with_system(Self::setup_player))
-      .add_system_set(SystemSet::on_update(self.game_state).with_system(Self::player_movement));
+      .add_system_set(
+        SystemSet::on_update(self.game_state)
+          .with_system(Self::read_input)
+          .with_system(Self::execute_player_actions),
+      );
   }
 }
 
@@ -55,12 +66,21 @@ where
       })
       .insert(T::default())
       .insert(PlayerComponent)
-      .insert(AnimationComponent(Timer::from_seconds(0.1, true)));
+      .insert(Movement {
+        speed: 500.0,
+        enabled: true,
+        target: None,
+      })
+      .insert(Animation::new(10., true));
   }
 
-  fn player_movement(mouse_button_input: Res<Input<MouseButton>>) {
-    if mouse_button_input.pressed(MouseButton::Left) {
-      info!("left mouse currently pressed");
+  fn read_input(
+    mouse_button_input: Res<Input<MouseButton>>,
+    mouse_info: Res<MouseInfo>,
+    mut player_events: EventWriter<PlayerAction>,
+  ) {
+    if mouse_button_input.just_pressed(MouseButton::Left) {
+      player_events.send(PlayerAction::Move(mouse_info.world_pos2));
     }
 
     if mouse_button_input.just_pressed(MouseButton::Left) {
@@ -69,6 +89,21 @@ where
 
     if mouse_button_input.just_released(MouseButton::Left) {
       info!("left mouse just released");
+    }
+  }
+
+  fn execute_player_actions(
+    mut qry: Query<(&PlayerComponent, &mut Movement)>,
+    mut events: EventReader<PlayerAction>,
+  ) {
+    for evt in events.iter() {
+      match evt {
+        PlayerAction::Move(pos) => {
+          for (mut _player, mut mov) in qry.iter_mut() {
+            mov.target = Some(pos.clone());
+          }
+        },
+      }
     }
   }
 }

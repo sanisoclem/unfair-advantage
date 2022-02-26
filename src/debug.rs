@@ -84,6 +84,7 @@ fn debug_gui(mut egui_context: ResMut<EguiContext>, mut dbg_state: ResMut<DebugC
       );
       if cmd_te.lost_focus() && ui.input().key_pressed(egui::Key::Enter) {
         dbg_state.invoke(dbg_events);
+        cmd_te.request_focus();
       } else if toggle_console && dbg_state.console_open {
         cmd_te.request_focus();
       }

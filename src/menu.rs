@@ -1,4 +1,5 @@
-use super::{despawn_screen, GameState};
+use super::{systems::cleanup_system, GameState};
+
 use bevy::{app::AppExit, prelude::*};
 
 const TEXT_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
@@ -12,7 +13,7 @@ impl Plugin for MenuPlugin {
       .add_system_set(SystemSet::on_enter(GameState::Menu).with_system(menu_setup))
       .add_system_set(SystemSet::on_enter(MenuState::Main).with_system(main_menu_setup))
       .add_system_set(
-        SystemSet::on_exit(MenuState::Main).with_system(despawn_screen::<OnMainMenuScreen>),
+        SystemSet::on_exit(MenuState::Main).with_system(cleanup_system::<OnMainMenuScreen>),
       )
       // Common systems to all screens that handles buttons behaviour
       .add_system_set(

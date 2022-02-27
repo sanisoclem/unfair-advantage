@@ -9,6 +9,7 @@ mod game;
 mod menu;
 mod splash;
 mod systems;
+mod z;
 
 #[derive(Clone, Eq, PartialEq, Debug, Hash, Copy)]
 enum GameState {

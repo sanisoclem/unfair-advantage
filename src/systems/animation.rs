@@ -7,6 +7,7 @@ pub struct AtlasAnimation {
   pub timer: Timer,
   pub start_frame: usize,
   pub enabled: bool,
+  pub complete: bool,
 }
 impl Default for AtlasAnimation {
   fn default() -> Self {
@@ -14,6 +15,7 @@ impl Default for AtlasAnimation {
       timer: Timer::from_seconds(0.0, false),
       enabled: false,
       start_frame: 0,
+      complete: false,
     }
   }
 }
@@ -28,25 +30,41 @@ pub struct AtlasAnimationDefinition {
 }
 
 #[derive(Component)]
-pub struct CustomDiscreteAnimation<T, TData> {
-  pub timer: Timer,
-  pub data: TData,
-  pub ease: fn(&TData, Mut<T>) -> TData,
+pub struct CustomAnimation<T1, T2> {
+  pub ease: fn(Duration, Mut<T1>, Mut<T2>),
 }
 
-pub fn animate_custom_discrete<T: Component, TData: Component>(
+pub fn animate_custom<T1: Component, T2: Component>(
   time: Res<Time>,
-  mut qry: Query<(&mut CustomDiscreteAnimation<T, TData>, &mut T)>,
+  mut qry: Query<(&CustomAnimation<T1, T2>, &mut T1, &mut T2)>,
 ) {
-  for (mut anim, comp) in qry.iter_mut() {
-    anim.timer.tick(time.delta());
-    if anim.timer.just_finished() {
-      anim.data = (anim.ease)(&anim.data, comp);
+  for (anim, c1, c2) in qry.iter_mut() {
+    (anim.ease)(time.delta(), c1, c2);
+  }
+}
+
+#[derive(Component)]
+pub struct TimedLife {
+  pub timer: Timer,
+}
+impl TimedLife {
+  pub fn from_seconds(seconds: f32) -> Self {
+    TimedLife {
+      timer: Timer::from_seconds(seconds, false),
     }
   }
 }
 
-fn create_animation(
+fn despawn_timed_lives(mut commands: Commands, time: Res<Time>, mut qry: Query<(Entity, &mut TimedLife)>) {
+  for (entity, mut life) in qry.iter_mut() {
+    life.timer.tick(time.delta());
+    if life.timer.just_finished() {
+      commands.entity(entity).despawn_recursive();
+    }
+  }
+}
+
+fn init_atlas_animation(
   mut qry: Query<
     (
       &mut AtlasAnimation,
@@ -94,6 +112,7 @@ fn animate_sprites(
 
         if !def.repeat && sprite.index == animation.start_frame {
           animation.enabled = false;
+          animation.complete = true;
         }
       }
     }
@@ -106,7 +125,8 @@ pub struct AnimationPlugin;
 impl Plugin for AnimationPlugin {
   fn build(&self, app: &mut App) {
     app
-      .add_system(create_animation)
-      .add_system(animate_sprites);
+      .add_system(init_atlas_animation)
+      .add_system(animate_sprites)
+      .add_system(despawn_timed_lives);
   }
 }

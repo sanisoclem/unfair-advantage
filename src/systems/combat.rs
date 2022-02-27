@@ -1,18 +1,18 @@
-use bevy::math::Vec3Swizzles;
+use crate::systems::TimedLife;
 use crate::systems::{AtlasAnimation, AtlasAnimationDefinition, PhysicsLayers};
+use bevy::math::Vec3Swizzles;
 use bevy::prelude::*;
 use heron::prelude::*;
 
 #[derive(Debug)]
 pub enum CombatAction {
   BasicAttack(Vec2, Vec2),
-  WeakAttack,
+  //WeakAttack,
 }
 
 #[derive(Debug)]
 pub enum CombatEvent {
   DamageApplied(Entity, f32, Vec2),
-  WeakAttack,
 }
 
 #[derive(Component)]
@@ -20,7 +20,6 @@ pub struct Combatant {
   pub hp: f32,
   pub hp_max: f32,
 }
-
 
 #[derive(Component, Default)]
 pub struct AreaOfEffect {
@@ -30,33 +29,39 @@ pub struct AreaOfEffect {
   pub victims: Vec<Entity>,
 }
 
-fn find_victims(
-  mut qry: Query<&mut AreaOfEffect>,
-  mut events: EventReader<CollisionEvent>
-) {
+#[derive(Default)]
+pub struct FlyingTextSettings {
+  pub style: TextStyle,
+  pub alignment: TextAlignment,
+}
+
+fn find_victims(mut qry: Query<&mut AreaOfEffect>, mut events: EventReader<CollisionEvent>) {
   events
-  .iter()
-  .filter_map(|event| {
+    .iter()
+    .filter_map(|event| {
       let (entity_1, entity_2) = event.rigid_body_entities();
       let (layers_1, layers_2) = event.collision_layers();
-      if layers_1.contains_group(PhysicsLayers::Attacks) && layers_2.contains_group(PhysicsLayers::Enemies) {
-          Some((entity_2, entity_1, event))
-      } else if layers_2.contains_group(PhysicsLayers::Attacks) && layers_1.contains_group(PhysicsLayers::Enemies) {
+      if layers_1.contains_group(PhysicsLayers::Attacks)
+        && layers_2.contains_group(PhysicsLayers::Enemies)
+      {
+        Some((entity_2, entity_1, event))
+      } else if layers_2.contains_group(PhysicsLayers::Attacks)
+        && layers_1.contains_group(PhysicsLayers::Enemies)
+      {
         Some((entity_1, entity_2, event))
       } else {
-          None
+        None
       }
-  })
-  .for_each(|(enemy, attack, e)| {
-    if let Ok(mut aoe) = qry.get_mut(attack) {
-      if e.is_started() {
-        aoe.victims.push(enemy);
+    })
+    .for_each(|(enemy, attack, e)| {
+      if let Ok(mut aoe) = qry.get_mut(attack) {
+        if e.is_started() {
+          aoe.victims.push(enemy);
+        } else {
+          aoe.victims.retain(|victim| *victim != enemy);
+        }
       }
-      else {
-        aoe.victims.retain(|victim| *victim != enemy);
-      }
-    }
-  });
+    });
 }
 
 fn despawn_attacks(
@@ -89,7 +94,11 @@ fn damage_victims(
           if c.hp < 0. {
             c.hp = 0.;
           } else {
-            events.send(CombatEvent::DamageApplied(*victim, aoe.damage, transform.translation.xy()));
+            events.send(CombatEvent::DamageApplied(
+              *victim,
+              aoe.damage,
+              transform.translation.xy(),
+            ));
           }
         }
       }
@@ -97,13 +106,30 @@ fn damage_victims(
   }
 }
 
-
-
 fn show_damage(
+  settings: Res<FlyingTextSettings>,
+  mut commands: Commands,
   mut events: EventReader<CombatEvent>,
 ) {
   for evt in events.iter() {
-
+    match evt {
+      CombatEvent::DamageApplied(_victim, damage, pos) => {
+        commands
+          .spawn_bundle(Text2dBundle {
+            text: Text::with_section(
+              format!("{:?}!", damage),
+              settings.style.clone(),
+              settings.alignment,
+            ),
+            transform: Transform::from_translation(Vec3::from((
+              pos.clone(),
+              crate::z::FLYING_TEXT,
+            ))),
+            ..Default::default()
+          })
+          .insert(TimedLife::from_seconds(0.5));
+      }
+    }
   }
 }
 
@@ -123,7 +149,9 @@ fn spawn_aoes(
         commands
           .spawn()
           .insert(Transform::from_translation(Vec3::new(
-            origin.x, origin.y, 60.0,
+            origin.x,
+            origin.y,
+            crate::z::PLAYER_ATTACK,
           )))
           .insert(GlobalTransform::default())
           //physics
@@ -177,6 +205,21 @@ fn spawn_aoes(
 //   pub duration: f32,
 // }
 
+fn setup(mut settings: ResMut<FlyingTextSettings>, asset_server: Res<AssetServer>) {
+  let font = asset_server.load("fonts/FiraSans-Bold.ttf");
+  *settings = FlyingTextSettings {
+    style: TextStyle {
+      font,
+      font_size: 60.0,
+      color: Color::WHITE,
+    },
+    alignment: TextAlignment {
+      vertical: VerticalAlign::Center,
+      horizontal: HorizontalAlign::Center,
+    },
+  };
+}
+
 #[derive(Component)]
 pub struct CombatPlugin;
 
@@ -185,6 +228,9 @@ impl Plugin for CombatPlugin {
     app
       .add_event::<CombatAction>()
       .add_event::<CombatEvent>()
+      .init_resource::<FlyingTextSettings>()
+      .add_startup_system(setup)
+      .add_system(show_damage)
       .add_system(spawn_aoes)
       .add_system(find_victims)
       .add_system(damage_victims)

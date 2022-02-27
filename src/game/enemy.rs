@@ -5,7 +5,7 @@ use bevy::utils::HashMap;
 use std::{fmt::Debug, hash::Hash};
 
 pub enum EnemyCommand {
-  Spawn(EnemyType, Vec3),
+  Spawn(EnemyType, Vec2),
   //SpawnBatch(Vec<(EnemyType, Vec3)>),
   //DespawnAll,
 }
@@ -43,7 +43,7 @@ pub fn spawn_enemies(
           commands
             .spawn_bundle(SpriteSheetBundle {
               texture_atlas: def.texture_atlas.clone(),
-              transform: Transform::from_translation(pos.clone()),
+              transform: Transform::from_translation(Vec3::from((pos.clone(), crate::z::ENEMY))),
               ..Default::default()
             })
             .insert(def.idle.clone())

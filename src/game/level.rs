@@ -59,7 +59,7 @@ fn setup_test_level(
   commands
     .entity(map_entity)
     .insert(map)
-    .insert(Transform::from_xyz(-5120.0, -5120.0, 0.0).with_scale(Vec3::splat(3.0)))
+    .insert(Transform::from_xyz(-5120.0, -5120.0, crate::z::GROUND).with_scale(Vec3::splat(3.0)))
     .insert(GlobalTransform::default());
 
   player_state
@@ -72,7 +72,7 @@ fn setup_test_level(
     let pos = Vec2::new(((i % r) - r/2) as f32, (i/r) as f32);
     enemy_cmd.send(EnemyCommand::Spawn(
       EnemyType::Slime,
-      Vec3::from((pos * sz, 50.)),
+      pos * sz,
     ));
   }
 
@@ -82,7 +82,7 @@ fn setup_test_level(
     let pos = Vec2::new(((i % r) - r/2 - 11) as f32, (i/r) as f32);
     enemy_cmd.send(EnemyCommand::Spawn(
       EnemyType::Goblin,
-      Vec3::from((pos * sz, 50.)),
+      pos * sz,
     ));
   }
 
@@ -92,7 +92,7 @@ fn setup_test_level(
     let pos = Vec2::new(((i % r) - r/2 + 11) as f32, (i/r) as f32);
     enemy_cmd.send(EnemyCommand::Spawn(
       EnemyType::Goblin,
-      Vec3::from((pos * sz, 50.)),
+      pos * sz,
     ));
   }
 }

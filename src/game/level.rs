@@ -11,7 +11,7 @@ use std::{fmt::Debug, hash::Hash};
 pub enum LevelState {
   Disabled,
   TestLevel,
-  //ProceduralLevel(String),
+  // ProceduralLevel(String),
 }
 
 #[derive(Component)]
@@ -66,34 +66,25 @@ fn setup_test_level(
     .set(PlayerState::Active)
     .expect("set player state should always succeed");
 
-  for i in 20..70 {
+  for i in 20..200 {
     let r = 10;
     let sz = 16.;
-    let pos = Vec2::new(((i % r) - r/2) as f32, (i/r) as f32);
-    enemy_cmd.send(EnemyCommand::Spawn(
-      EnemyType::Slime,
-      pos * sz,
-    ));
+    let pos = Vec2::new(((i % r) - r / 2) as f32, (i / r) as f32);
+    enemy_cmd.send(EnemyCommand::Spawn(EnemyType::Slime, pos * sz));
   }
 
-  for i in 20..70 {
+  for i in 20..200 {
     let r = 10;
     let sz = 16.;
-    let pos = Vec2::new(((i % r) - r/2 - 11) as f32, (i/r) as f32);
-    enemy_cmd.send(EnemyCommand::Spawn(
-      EnemyType::Goblin,
-      pos * sz,
-    ));
+    let pos = Vec2::new(((i % r) - r / 2 - 11) as f32, (i / r) as f32);
+    enemy_cmd.send(EnemyCommand::Spawn(EnemyType::Goblin, pos * sz));
   }
 
-  for i in 20..70 {
+  for i in 20..200 {
     let r = 10;
     let sz = 16.;
-    let pos = Vec2::new(((i % r) - r/2 + 11) as f32, (i/r) as f32);
-    enemy_cmd.send(EnemyCommand::Spawn(
-      EnemyType::Goblin,
-      pos * sz,
-    ));
+    let pos = Vec2::new(((i % r) - r / 2 + 11) as f32, (i / r) as f32);
+    enemy_cmd.send(EnemyCommand::Spawn(EnemyType::Goblin, pos * sz));
   }
 }
 

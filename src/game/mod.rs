@@ -1,9 +1,9 @@
 use super::GameState;
 use bevy::prelude::*;
 
+pub mod enemy;
 pub mod level;
 pub mod player;
-pub mod enemy;
 
 pub struct GamePlugin;
 impl Plugin for GamePlugin {

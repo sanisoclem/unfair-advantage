@@ -139,13 +139,13 @@ fn debug_player(
         .striped(true)
         .show(ui, |ui| {
           ui.label(format!("x {:?}", transform.translation.x));
-          //ui.add(egui::TextEdit::singleline(transform.translation.x));
+          // ui.add(egui::TextEdit::singleline(transform.translation.x));
           ui.end_row();
           ui.label(format!("y {:?}", transform.translation.y));
-          //ui.add(egui::TextEdit::singleline(transform.translation.y));
+          // ui.add(egui::TextEdit::singleline(transform.translation.y));
           ui.end_row();
           ui.label(format!("z {:?}", transform.translation.z));
-          //ui.add(egui::TextEdit::singleline(transform.translation.z));
+          // ui.add(egui::TextEdit::singleline(transform.translation.z));
           ui.end_row();
           ui.label(format!("last x {:?}", movement.last_direction.x));
           ui.end_row();

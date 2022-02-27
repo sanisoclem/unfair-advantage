@@ -1,5 +1,4 @@
-use bevy::math::Vec3Swizzles;
-use bevy::prelude::*;
+use bevy::{math::Vec3Swizzles, prelude::*};
 use heron::prelude::*;
 use std::{fmt::Debug, hash::Hash};
 
@@ -46,22 +45,25 @@ fn spawn_player(
   commands
     .spawn_bundle(SpriteSheetBundle {
       texture_atlas: texture_atlas_handle.clone(),
-      transform: Transform::from_scale(Vec3::splat(1.0))
-        .with_translation(Vec3::new(0.0, 0.0, crate::z::PLAYER)),
+      transform: Transform::from_scale(Vec3::splat(1.0)).with_translation(Vec3::new(
+        0.0,
+        0.0,
+        crate::z::PLAYER,
+      )),
       ..Default::default()
     })
     // mark this as the player
     .insert(PlayerComponent)
     // mark this as the camera focus target
     .insert(CameraTarget)
-    //physics
+    // physics
     .insert(RigidBody::KinematicPositionBased)
     .insert(CollisionShape::Sphere { radius: 7. })
     //.insert(Velocity::from_linear(Vec3::default()))
     //.insert(Acceleration::from_linear(Vec3::default()))
     .insert(PhysicMaterial {
       friction: 1.0,
-      density: 1.0,
+      density: 1.,
       ..Default::default()
     })
     .insert(RotationConstraints::lock())
@@ -74,7 +76,7 @@ fn spawn_player(
     // set moveable
     .insert(Movement {
       last_direction: Vec2::Y * -1.,
-      speed: 500.0,
+      speed: 150.0,
       enabled: true,
       target: None,
     });

@@ -1,5 +1,4 @@
-use bevy::utils::Duration;
-use bevy::prelude::*;
+use bevy::{prelude::*, utils::Duration};
 use rand::distributions::{Distribution, Uniform};
 
 #[derive(Component)]
@@ -26,7 +25,12 @@ pub struct AtlasAnimationDefinition {
   pub end: usize,
   pub fps: f32,
   pub repeat: bool,
-  pub random_start: bool
+  pub random_start: bool,
+}
+impl AtlasAnimationDefinition {
+  pub fn duration_seconds(&self) -> f32 {
+    (self.end - self.start + 1) as f32 / self.fps
+  }
 }
 
 #[derive(Component)]
@@ -55,7 +59,11 @@ impl TimedLife {
   }
 }
 
-fn despawn_timed_lives(mut commands: Commands, time: Res<Time>, mut qry: Query<(Entity, &mut TimedLife)>) {
+fn despawn_timed_lives(
+  mut commands: Commands,
+  time: Res<Time>,
+  mut qry: Query<(Entity, &mut TimedLife)>,
+) {
   for (entity, mut life) in qry.iter_mut() {
     life.timer.tick(time.delta());
     if life.timer.just_finished() {
@@ -88,7 +96,7 @@ fn init_atlas_animation(
         let between = Uniform::from(def.start..(def.end + 1));
         between.sample(&mut rng)
       } else {
-        0
+        def.start
       };
 
       sprite.index = anim.start_frame;
@@ -110,7 +118,7 @@ fn animate_sprites(
       if animation.timer.just_finished() {
         sprite.index = def.start + ((sprite.index + 1 - def.start) % (def.end - def.start + 1));
 
-        if !def.repeat && sprite.index == animation.start_frame {
+        if !def.repeat && ((!def.random_start && sprite.index == def.end) || sprite.index == animation.start_frame) {
           animation.enabled = false;
           animation.complete = true;
         }

@@ -1,18 +1,16 @@
-use crate::systems::TimedLife;
-use crate::systems::{AtlasAnimation, AtlasAnimationDefinition, PhysicsLayers};
-use bevy::math::Vec3Swizzles;
-use bevy::prelude::*;
+use crate::systems::{AtlasAnimation, AtlasAnimationDefinition, PhysicsLayers, TimedLife};
+use bevy::{math::Vec3Swizzles, prelude::*};
 use heron::prelude::*;
 
 #[derive(Debug)]
 pub enum CombatAction {
   BasicAttack(Vec2, Vec2),
-  //WeakAttack,
+  // WeakAttack,
 }
 
 #[derive(Debug)]
 pub enum CombatEvent {
-  DamageApplied(Entity, f32, Vec2),
+  DamageApplied(Entity, f32, Vec2, bool),
 }
 
 #[derive(Component)]
@@ -93,13 +91,13 @@ fn damage_victims(
           c.hp -= aoe.damage;
           if c.hp < 0. {
             c.hp = 0.;
-          } else {
-            events.send(CombatEvent::DamageApplied(
-              *victim,
-              aoe.damage,
-              transform.translation.xy(),
-            ));
           }
+          events.send(CombatEvent::DamageApplied(
+            *victim,
+            aoe.damage,
+            transform.translation.xy(),
+            c.hp == 0.,
+          ));
         }
       }
     }
@@ -113,21 +111,23 @@ fn show_damage(
 ) {
   for evt in events.iter() {
     match evt {
-      CombatEvent::DamageApplied(_victim, damage, pos) => {
+      CombatEvent::DamageApplied(_victim, damage, pos, _fatal) => {
         commands
           .spawn_bundle(Text2dBundle {
             text: Text::with_section(
-              format!("{:?}!", damage),
+              format!("{:?}", *damage as i32),
               settings.style.clone(),
               settings.alignment,
             ),
             transform: Transform::from_translation(Vec3::from((
               pos.clone(),
               crate::z::FLYING_TEXT,
-            ))),
+            )))
+            .with_scale(Vec3::splat(0.25)),
             ..Default::default()
           })
-          .insert(TimedLife::from_seconds(0.5));
+          .insert(TimedLife::from_seconds(0.1));
+        info!("")
       }
     }
   }
@@ -154,12 +154,15 @@ fn spawn_aoes(
             crate::z::PLAYER_ATTACK,
           )))
           .insert(GlobalTransform::default())
-          //physics
-          .insert(RigidBody::KinematicPositionBased)
-          .insert(CollisionLayers::none().with_group(PhysicsLayers::Attacks))
+          .insert(RigidBody::Sensor)
+          .insert(
+            CollisionLayers::none()
+              .with_group(PhysicsLayers::Attacks)
+              .with_mask(PhysicsLayers::Enemies),
+          )
           .insert(AreaOfEffect {
-            damage: 10.,
-            tick_timer: Timer::from_seconds(0.1, true),
+            damage: 100.,
+            tick_timer: Timer::from_seconds(0.01, false),
             kill_timer: Timer::from_seconds(0.8, false),
             ..Default::default()
           })
@@ -185,9 +188,34 @@ fn spawn_aoes(
               })
               .insert(AtlasAnimation::default())
               .insert(CollisionShape::Cuboid {
-                half_extends: Vec3::new(50., 15., 0.),
+                half_extends: Vec3::new(25., 10., 0.),
                 border_radius: None,
               });
+            parent
+              .spawn()
+              .insert(Transform::from_rotation(Quat::from_rotation_arc(
+                Vec3::X,
+                Vec3::new(direction.x, direction.y, 0.0),
+              )))
+              .insert(GlobalTransform::default())
+              .insert(RigidBody::Dynamic)
+              .insert(CollisionShape::Cuboid {
+                half_extends: Vec3::new(1., 5., 0.),
+                border_radius: None,
+              })
+              .insert(PhysicMaterial {
+                density: 100000.0,
+                ..Default::default()
+              })
+              .insert(Damping::from_linear(5.0))
+              .insert(
+                CollisionLayers::none()
+                  .with_group(PhysicsLayers::AttackDead)
+                  .with_mask(PhysicsLayers::Corpses),
+              )
+              .insert(Velocity::from_linear(
+                Vec3::from((direction.clone(), 0.)) * 300.0,
+              ));
           });
       }
       _ => {
@@ -206,11 +234,11 @@ fn spawn_aoes(
 // }
 
 fn setup(mut settings: ResMut<FlyingTextSettings>, asset_server: Res<AssetServer>) {
-  let font = asset_server.load("fonts/FiraSans-Bold.ttf");
+  let font = asset_server.load("FiraMono-Medium.ttf");
   *settings = FlyingTextSettings {
     style: TextStyle {
       font,
-      font_size: 60.0,
+      font_size: 30.0,
       color: Color::WHITE,
     },
     alignment: TextAlignment {
@@ -218,6 +246,16 @@ fn setup(mut settings: ResMut<FlyingTextSettings>, asset_server: Res<AssetServer
       horizontal: HorizontalAlign::Center,
     },
   };
+}
+
+fn animate_attack(time: Res<Time>, mut qry: Query<&mut Transform, With<AreaOfEffect>>) {
+  for mut transform in qry.iter_mut() {
+    if transform.scale.x < 1.0 {
+      transform.scale = transform.scale + Vec3::splat(time.delta_seconds() * 1.0);
+    } else {
+      transform.scale = Vec3::splat(1.);
+    }
+  }
 }
 
 #[derive(Component)]
@@ -231,6 +269,7 @@ impl Plugin for CombatPlugin {
       .init_resource::<FlyingTextSettings>()
       .add_startup_system(setup)
       .add_system(show_damage)
+      //.add_system(animate_attack)
       .add_system(spawn_aoes)
       .add_system(find_victims)
       .add_system(damage_victims)

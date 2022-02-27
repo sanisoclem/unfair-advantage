@@ -1,25 +1,30 @@
-use crate::systems::{AtlasAnimation, PhysicsLayers, AtlasAnimationDefinition};
-use bevy::prelude::*;
+use crate::{
+  game::player::PlayerComponent,
+  systems::{
+    AtlasAnimation, AtlasAnimationDefinition, Combatant, Movement, PhysicsLayers, TimedLife,
+  },
+};
+use bevy::{math::Vec3Swizzles, prelude::*, utils::HashMap};
 use heron::prelude::*;
-use bevy::utils::HashMap;
 use std::{fmt::Debug, hash::Hash};
 
 pub enum EnemyCommand {
   Spawn(EnemyType, Vec2),
-  //SpawnBatch(Vec<(EnemyType, Vec3)>),
-  //DespawnAll,
+  // SpawnBatch(Vec<(EnemyType, Vec3)>),
+  // DespawnAll,
 }
 
-#[derive(Eq, PartialEq, Debug, Hash)]
+#[derive(Eq, PartialEq, Debug, Hash, Clone)]
 pub enum EnemyType {
   Slime,
   Goblin,
-  //Eye,
+  // Eye,
 }
 
 pub struct EnemyDefinition {
   pub texture_atlas: Handle<TextureAtlas>,
   pub idle: AtlasAnimationDefinition,
+  pub death: AtlasAnimationDefinition,
   pub max_hp: f32,
 }
 
@@ -29,7 +34,9 @@ pub struct EnemyDictionary {
 }
 
 #[derive(Component)]
-pub struct Enemy;
+pub struct Enemy {
+  pub enemy_type: EnemyType,
+}
 
 pub fn spawn_enemies(
   mut cmds: EventReader<EnemyCommand>,
@@ -46,20 +53,93 @@ pub fn spawn_enemies(
               transform: Transform::from_translation(Vec3::from((pos.clone(), crate::z::ENEMY))),
               ..Default::default()
             })
+            .insert(Combatant {
+              hp: def.max_hp,
+              hp_max: def.max_hp,
+            })
             .insert(def.idle.clone())
             .insert(AtlasAnimation::default())
-            .insert(Enemy)//physics
+            .insert(Enemy {
+              enemy_type: enemy_type.clone(),
+            })
+            // physics
             .insert(RigidBody::Dynamic)
-            .insert(CollisionShape::Sphere {  radius: 7. })
+            .insert(CollisionShape::Sphere { radius: 7. })
             //.insert(Velocity::from_linear(Vec3::default()))
             //.insert(Acceleration::from_linear(Vec3::default()))
-            .insert(PhysicMaterial { friction: 1.0, density: 10.0, ..Default::default() })
+            .insert(PhysicMaterial {
+              friction: 0.2,
+              restitution: 1.0,
+              density: 1.0,
+              ..Default::default()
+            })
             .insert(RotationConstraints::lock())
-            .insert(Damping::from_linear(10.0))
-            .insert(CollisionLayers::none().with_group(PhysicsLayers::Enemies).with_mask(PhysicsLayers::Player).with_mask(PhysicsLayers::Enemies).with_mask(PhysicsLayers::World));
+            .insert(Damping::from_linear(3.0))
+            .insert(
+              CollisionLayers::none()
+                .with_group(PhysicsLayers::Enemies)
+                .with_mask(PhysicsLayers::Player)
+                .with_mask(PhysicsLayers::Attacks)
+                .with_mask(PhysicsLayers::Enemies)
+                .with_mask(PhysicsLayers::World),
+            )
+            .insert(Movement {
+              last_direction: Vec2::Y * -1.,
+              speed: 100.0,
+              enabled: true,
+              target: None,
+            })
+            .insert(Velocity::from(Vec3::splat(0.0)));
         } else {
           warn!("Enemy type not found: {:?}", enemy_type);
         }
+      }
+    }
+  }
+}
+
+fn despawn_dead(
+  mut commands: Commands,
+  enemy_dic: Res<EnemyDictionary>,
+  qry: Query<(Entity, &Enemy, &Combatant, &Transform, &Velocity)>,
+) {
+  for (entity, enemy, combatant, transform, v) in qry.iter() {
+    if combatant.hp <= 0.0 {
+      commands.entity(entity).despawn_recursive();
+
+      if let Some(def) = enemy_dic.enemies.get(&enemy.enemy_type) {
+        commands
+          .spawn_bundle(SpriteSheetBundle {
+            texture_atlas: def.texture_atlas.clone(),
+            transform: transform.clone(),
+            ..Default::default()
+          })
+          .insert(def.death.clone())
+          .insert(RigidBody::Dynamic)
+          .insert(CollisionShape::Sphere { radius: 7. })
+          .insert(
+            CollisionLayers::none()
+              .with_group(PhysicsLayers::Corpses)
+              .with_mask(PhysicsLayers::AttackDead)
+              .with_mask(PhysicsLayers::World),
+          )
+          .insert(v.clone())
+          .insert(AtlasAnimation::default())
+          .insert(TimedLife::from_seconds(def.death.duration_seconds()));
+      }
+    }
+  }
+}
+fn chase_player(
+  qry_player: Query<(&PlayerComponent, &Transform), Changed<Transform>>,
+  mut qry: Query<(&Enemy, &mut Movement, &Transform)>,
+) {
+  if let Ok((_, transform)) = qry_player.get_single() {
+    for (_, mut mov, t2) in qry.iter_mut() {
+      if (t2.translation - transform.translation).length() < 500. {
+        mov.target = Some(transform.translation.xy());
+      } else {
+        mov.target = None;
       }
     }
   }
@@ -70,7 +150,7 @@ fn setup(
   mut enemy_dict: ResMut<EnemyDictionary>,
   mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 ) {
-  let texture_handle = asset_server.load("pack2/full spritesheet.png");
+  let texture_handle = asset_server.load("pack2/full spritesheet2.png");
   let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(16.0, 16.0), 28, 7);
   let texture_atlas_handle = texture_atlases.add(texture_atlas);
 
@@ -79,7 +159,7 @@ fn setup(
   enemies.insert(
     EnemyType::Slime,
     EnemyDefinition {
-      max_hp: 100.,
+      max_hp: 10.,
       texture_atlas: texture_atlas_handle.clone(),
       idle: AtlasAnimationDefinition {
         start: 84,
@@ -88,13 +168,20 @@ fn setup(
         repeat: true,
         random_start: true,
       },
+      death: AtlasAnimationDefinition {
+        start: 84,
+        end: 103,
+        fps: 10.,
+        repeat: false,
+        random_start: false,
+      },
     },
   );
 
   enemies.insert(
     EnemyType::Goblin,
     EnemyDefinition {
-      max_hp: 100.,
+      max_hp: 10.,
       texture_atlas: texture_atlas_handle.clone(),
       idle: AtlasAnimationDefinition {
         start: 28,
@@ -102,6 +189,13 @@ fn setup(
         fps: 10.,
         repeat: true,
         random_start: true,
+      },
+      death: AtlasAnimationDefinition {
+        start: 28,
+        end: 41,
+        fps: 10.,
+        repeat: false,
+        random_start: false,
       },
     },
   );
@@ -116,6 +210,8 @@ impl Plugin for EnemyPlugin {
       .insert_resource(EnemyDictionary::default())
       .add_event::<EnemyCommand>()
       .add_startup_system(setup)
+      .add_system(despawn_dead)
+      .add_system(chase_player)
       .add_system(spawn_enemies);
   }
 }

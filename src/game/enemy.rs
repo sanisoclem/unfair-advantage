@@ -13,14 +13,14 @@ pub enum EnemyCommand {
 #[derive(Eq, PartialEq, Debug, Hash)]
 pub enum EnemyType {
   Slime,
-  //Goblin,
+  Goblin,
   //Eye,
 }
 
 pub struct EnemyDefinition {
   pub texture_atlas: Handle<TextureAtlas>,
-  pub scale: Vec3,
   pub idle: AtlasAnimationDefinition,
+  pub max_hp: f32,
 }
 
 #[derive(Default)]
@@ -43,7 +43,7 @@ pub fn spawn_enemies(
           commands
             .spawn_bundle(SpriteSheetBundle {
               texture_atlas: def.texture_atlas.clone(),
-              transform: Transform::from_scale(def.scale).with_translation(pos.clone()),
+              transform: Transform::from_translation(pos.clone()),
               ..Default::default()
             })
             .insert(def.idle.clone())
@@ -57,13 +57,9 @@ pub fn spawn_enemies(
             .insert(RotationConstraints::lock())
             .insert(Damping::from_linear(10.0))
             .insert(CollisionLayers::none().with_group(PhysicsLayers::Enemies).with_mask(PhysicsLayers::Player).with_mask(PhysicsLayers::Enemies).with_mask(PhysicsLayers::World));
-            info!("spawned enemy {:?}", enemy_type);
         } else {
           warn!("Enemy type not found: {:?}", enemy_type);
         }
-      }
-      _ => {
-        warn!("not implemented");
       }
     }
   }
@@ -83,13 +79,29 @@ fn setup(
   enemies.insert(
     EnemyType::Slime,
     EnemyDefinition {
+      max_hp: 100.,
       texture_atlas: texture_atlas_handle.clone(),
-      scale: Vec3::splat(1.0),
       idle: AtlasAnimationDefinition {
         start: 84,
         end: 89,
         fps: 10.,
-        repeat: true
+        repeat: true,
+        random_start: true,
+      },
+    },
+  );
+
+  enemies.insert(
+    EnemyType::Goblin,
+    EnemyDefinition {
+      max_hp: 100.,
+      texture_atlas: texture_atlas_handle.clone(),
+      idle: AtlasAnimationDefinition {
+        start: 28,
+        end: 33,
+        fps: 10.,
+        repeat: true,
+        random_start: true,
       },
     },
   );

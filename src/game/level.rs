@@ -69,10 +69,30 @@ fn setup_test_level(
   for i in 20..70 {
     let r = 10;
     let sz = 16.;
-    let scale = 1.;
+    let pos = Vec2::new(((i % r) - r/2) as f32, (i/r) as f32);
     enemy_cmd.send(EnemyCommand::Spawn(
       EnemyType::Slime,
-      Vec3::new(((r as f32 /-2. * sz)  + (((i % r) as f32) * sz)) *scale, ((((i/r) as f32) * sz)) *scale, 100.0),
+      Vec3::from((pos * sz, 50.)),
+    ));
+  }
+
+  for i in 20..70 {
+    let r = 10;
+    let sz = 16.;
+    let pos = Vec2::new(((i % r) - r/2 - 11) as f32, (i/r) as f32);
+    enemy_cmd.send(EnemyCommand::Spawn(
+      EnemyType::Goblin,
+      Vec3::from((pos * sz, 50.)),
+    ));
+  }
+
+  for i in 20..70 {
+    let r = 10;
+    let sz = 16.;
+    let pos = Vec2::new(((i % r) - r/2 + 11) as f32, (i/r) as f32);
+    enemy_cmd.send(EnemyCommand::Spawn(
+      EnemyType::Goblin,
+      Vec3::from((pos * sz, 50.)),
     ));
   }
 }

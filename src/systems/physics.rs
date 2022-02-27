@@ -6,6 +6,7 @@ pub enum PhysicsLayers {
     World,
     Player,
     Enemies,
+    Attacks,
 }
 
 #[derive(Component)]

@@ -1,9 +1,11 @@
+use bevy::utils::Duration;
 use bevy::prelude::*;
 use rand::distributions::{Distribution, Uniform};
 
 #[derive(Component)]
 pub struct AtlasAnimation {
   pub timer: Timer,
+  pub start_frame: usize,
   pub enabled: bool,
 }
 impl Default for AtlasAnimation {
@@ -11,6 +13,7 @@ impl Default for AtlasAnimation {
     AtlasAnimation {
       timer: Timer::from_seconds(0.0, false),
       enabled: false,
+      start_frame: 0,
     }
   }
 }
@@ -21,6 +24,26 @@ pub struct AtlasAnimationDefinition {
   pub end: usize,
   pub fps: f32,
   pub repeat: bool,
+  pub random_start: bool
+}
+
+#[derive(Component)]
+pub struct CustomDiscreteAnimation<T, TData> {
+  pub timer: Timer,
+  pub data: TData,
+  pub ease: fn(&TData, Mut<T>) -> TData,
+}
+
+pub fn animate_custom_discrete<T: Component, TData: Component>(
+  time: Res<Time>,
+  mut qry: Query<(&mut CustomDiscreteAnimation<T, TData>, &mut T)>,
+) {
+  for (mut anim, comp) in qry.iter_mut() {
+    anim.timer.tick(time.delta());
+    if anim.timer.just_finished() {
+      anim.data = (anim.ease)(&anim.data, comp);
+    }
+  }
 }
 
 fn create_animation(
@@ -40,11 +63,17 @@ fn create_animation(
     let mut rng = rand::thread_rng();
 
     for (mut anim, def, mut sprite) in qry.iter_mut() {
-      let between = Uniform::from(def.start..(def.end + 1));
-      anim.timer = Timer::from_seconds(1. / def.fps, def.repeat);
+      anim.timer = Timer::from_seconds(1. / def.fps, true);
       anim.enabled = true;
-      // start on random sprite
-      sprite.index = between.sample(&mut rng);
+
+      anim.start_frame = if def.random_start {
+        let between = Uniform::from(def.start..(def.end + 1));
+        between.sample(&mut rng)
+      } else {
+        0
+      };
+
+      sprite.index = anim.start_frame;
     }
   }
 }
@@ -62,6 +91,10 @@ fn animate_sprites(
       animation.timer.tick(time.delta());
       if animation.timer.just_finished() {
         sprite.index = def.start + ((sprite.index + 1 - def.start) % (def.end - def.start + 1));
+
+        if !def.repeat && sprite.index == animation.start_frame {
+          animation.enabled = false;
+        }
       }
     }
   }
@@ -72,6 +105,8 @@ pub struct AnimationPlugin;
 
 impl Plugin for AnimationPlugin {
   fn build(&self, app: &mut App) {
-    app.add_system(create_animation).add_system(animate_sprites);
+    app
+      .add_system(create_animation)
+      .add_system(animate_sprites);
   }
 }

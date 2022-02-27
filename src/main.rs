@@ -34,6 +34,7 @@ fn main() {
     //.add_plugin(FrameTimeDiagnosticsPlugin::default())
     .add_plugin(systems::AudioPlugin)
     .add_plugin(systems::AnimationPlugin)
+    .add_plugin(systems::CombatPlugin)
     //.add_plugin(systems::DebugPlugin)
     //.add_plugin(InspectorPlugin::<Data>::new())
     .add_plugin(systems::PhysicsPlugin)

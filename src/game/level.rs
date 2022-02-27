@@ -11,7 +11,7 @@ use std::{fmt::Debug, hash::Hash};
 pub enum LevelState {
   Disabled,
   TestLevel,
-  ProceduralLevel(String),
+  //ProceduralLevel(String),
 }
 
 #[derive(Component)]
@@ -69,7 +69,7 @@ fn setup_test_level(
   for i in 20..70 {
     let r = 10;
     let sz = 16.;
-    let scale = 3.;
+    let scale = 1.;
     enemy_cmd.send(EnemyCommand::Spawn(
       EnemyType::Slime,
       Vec3::new(((r as f32 /-2. * sz)  + (((i % r) as f32) * sz)) *scale, ((((i/r) as f32) * sz)) *scale, 100.0),

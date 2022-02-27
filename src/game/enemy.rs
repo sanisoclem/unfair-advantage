@@ -1,24 +1,20 @@
-use crate::systems::AtlasAnimation;
+use crate::systems::{AtlasAnimation, PhysicsLayers, AtlasAnimationDefinition};
 use bevy::prelude::*;
+use heron::prelude::*;
 use bevy::utils::HashMap;
 use std::{fmt::Debug, hash::Hash};
 
 pub enum EnemyCommand {
   Spawn(EnemyType, Vec3),
-  DespawnAll,
+  //SpawnBatch(Vec<(EnemyType, Vec3)>),
+  //DespawnAll,
 }
 
 #[derive(Eq, PartialEq, Debug, Hash)]
 pub enum EnemyType {
   Slime,
-  Goblin,
-  Eye,
-}
-
-pub struct AtlasAnimationDefinition {
-  pub start: usize,
-  pub end: usize,
-  pub fps: f32,
+  //Goblin,
+  //Eye,
 }
 
 pub struct EnemyDefinition {
@@ -50,15 +46,24 @@ pub fn spawn_enemies(
               transform: Transform::from_scale(def.scale).with_translation(pos.clone()),
               ..Default::default()
             })
-            .insert(AtlasAnimation::new(def.idle.fps, def.idle.start, def.idle.end, true))
-            .insert(Enemy);
+            .insert(def.idle.clone())
+            .insert(AtlasAnimation::default())
+            .insert(Enemy)//physics
+            .insert(RigidBody::Dynamic)
+            .insert(CollisionShape::Sphere {  radius: 7. })
+            //.insert(Velocity::from_linear(Vec3::default()))
+            //.insert(Acceleration::from_linear(Vec3::default()))
+            .insert(PhysicMaterial { friction: 1.0, density: 10.0, ..Default::default() })
+            .insert(RotationConstraints::lock())
+            .insert(Damping::from_linear(10.0))
+            .insert(CollisionLayers::none().with_group(PhysicsLayers::Enemies).with_mask(PhysicsLayers::Player).with_mask(PhysicsLayers::Enemies).with_mask(PhysicsLayers::World));
             info!("spawned enemy {:?}", enemy_type);
         } else {
           warn!("Enemy type not found: {:?}", enemy_type);
         }
       }
-      EnemyCommand::DespawnAll => {
-        //TODO: despawn all enemies
+      _ => {
+        warn!("not implemented");
       }
     }
   }
@@ -79,11 +84,12 @@ fn setup(
     EnemyType::Slime,
     EnemyDefinition {
       texture_atlas: texture_atlas_handle.clone(),
-      scale: Vec3::splat(3.0),
+      scale: Vec3::splat(1.0),
       idle: AtlasAnimationDefinition {
         start: 84,
         end: 89,
         fps: 10.,
+        repeat: true
       },
     },
   );

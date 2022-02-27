@@ -3,6 +3,7 @@ use bevy::{
   prelude::*,
 };
 use bevy_egui::EguiPlugin;
+use bevy_inspector_egui::{InspectorPlugin, Inspectable};
 
 mod game;
 mod menu;
@@ -29,11 +30,13 @@ fn main() {
     .add_state(GameState::Game)
     .add_plugins(DefaultPlugins)
     .add_plugin(EguiPlugin)
-    .add_plugin(LogDiagnosticsPlugin::default())
-    .add_plugin(FrameTimeDiagnosticsPlugin::default())
+    //.add_plugin(LogDiagnosticsPlugin::default())
+    //.add_plugin(FrameTimeDiagnosticsPlugin::default())
     .add_plugin(systems::AudioPlugin)
     .add_plugin(systems::AnimationPlugin)
-    .add_plugin(systems::DebugPlugin)
+    //.add_plugin(systems::DebugPlugin)
+    //.add_plugin(InspectorPlugin::<Data>::new())
+    .add_plugin(systems::PhysicsPlugin)
     .add_plugin(systems::MousePlugin)
     .add_plugin(systems::MovementPlugin)
     .add_plugin(systems::TopDownCameraPlugin)

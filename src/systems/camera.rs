@@ -9,8 +9,11 @@ pub struct MainCamera;
 pub struct CameraTarget;
 
 fn setup(mut commands: Commands) {
+  let mut cam_bundle = OrthographicCameraBundle::new_2d();
+  cam_bundle.transform  = cam_bundle.transform.with_scale(Vec3::new(0.5, 0.5, 1.0));
+
   commands
-    .spawn_bundle(OrthographicCameraBundle::new_2d())
+    .spawn_bundle(cam_bundle)
     .insert(MainCamera)
     .insert(Movement {
       last_direction: Vec2::default(),

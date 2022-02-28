@@ -1,12 +1,7 @@
+use bevy::utils::HashMap;
 use crate::systems::{AtlasAnimation, AtlasAnimationDefinition, PhysicsLayers, TimedLife};
 use bevy::{math::Vec3Swizzles, prelude::*};
 use heron::prelude::*;
-
-#[derive(Debug)]
-pub enum CombatAction {
-  BasicAttack(Vec2, Vec2),
-  // WeakAttack,
-}
 
 #[derive(Debug)]
 pub enum CombatEvent {
@@ -18,6 +13,9 @@ pub struct Combatant {
   pub hp: f32,
   pub hp_max: f32,
 }
+
+#[derive(Component)]
+pub struct Immortal;
 
 #[derive(Component, Default)]
 pub struct AreaOfEffect {
@@ -32,6 +30,59 @@ pub struct FlyingTextSettings {
   pub style: TextStyle,
   pub alignment: TextAlignment,
 }
+
+
+#[derive(Component, Default)]
+pub struct Spellbook {
+  pub spells: HashMap<SpellType, Spell>,
+}
+
+#[derive(Component)]
+pub struct ActiveSpell {
+  status: ActiveSpellStatus,
+  prepare_entity: Option<Entity>
+}
+
+#[derive(Hash, Copy, Clone, Eq, PartialEq, Debug)]
+pub enum SpellType {
+  BasicAttack
+}
+
+pub struct Spell {
+  pub status: SpellStatus,
+  pub damage: f32,
+  pub dot: bool,
+  pub damage_tick: f32,
+  pub prepare_duration: f32,
+  pub cast_duration: f32,
+  pub recovery_duration: f32,
+  pub prepare_sprite: Option<SpellSprite>,
+  pub cast_sprite: Option<SpellSprite>,
+  pub recovery_sprite: Option<SpellSprite>,
+  pub projectile_sprite: Option<SpellSprite>,
+  pub shape: CollisionShape,
+  pub projectile_velocity: f32,
+}
+pub struct SpellSprite {
+  pub texture_atlas: Handle<TextureAtlas>,
+  pub start_frame: usize,
+  pub end_frame: usize,
+  pub repeatable: bool,
+  pub fps: f32, // only used if repeatable
+  pub translation: Vec2 // used to offset the sprite
+}
+pub enum ActiveSpellStatus {
+  NoActiveSpell,
+  Preparing(SpellType, Timer),
+  Casting(SpellType, Timer),
+  Recovery(SpellType, Timer)
+}
+
+pub enum SpellStatus {
+  Ready,
+  Cooldown(Timer)
+}
+
 
 fn find_victims(mut qry: Query<&mut AreaOfEffect>, mut events: EventReader<CollisionEvent>) {
   events
@@ -133,97 +184,97 @@ fn show_damage(
   }
 }
 
-fn spawn_aoes(
-  mut commands: Commands,
-  mut actions: EventReader<CombatAction>,
-  asset_server: Res<AssetServer>,
-  mut texture_atlases: ResMut<Assets<TextureAtlas>>,
-) {
-  let texture_handle = asset_server.load("combat/Dark VFX 8 (72x32).png");
-  let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(72.0, 32.0), 16, 1);
-  let texture_atlas_handle = texture_atlases.add(texture_atlas);
+// fn spawn_aoes(
+//   mut commands: Commands,
+//   mut actions: EventReader<CombatAction>,
+//   asset_server: Res<AssetServer>,
+//   mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+// ) {
+//   let texture_handle = asset_server.load("combat/Dark VFX 8 (72x32).png");
+//   let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(72.0, 32.0), 16, 1);
+//   let texture_atlas_handle = texture_atlases.add(texture_atlas);
 
-  for action in actions.iter() {
-    match action {
-      CombatAction::BasicAttack(origin, direction) => {
-        commands
-          .spawn()
-          .insert(Transform::from_translation(Vec3::new(
-            origin.x,
-            origin.y,
-            crate::z::PLAYER_ATTACK,
-          )))
-          .insert(GlobalTransform::default())
-          .insert(RigidBody::Sensor)
-          .insert(
-            CollisionLayers::none()
-              .with_group(PhysicsLayers::Attacks)
-              .with_mask(PhysicsLayers::Enemies),
-          )
-          .insert(AreaOfEffect {
-            damage: 100.,
-            tick_timer: Timer::from_seconds(0.01, false),
-            kill_timer: Timer::from_seconds(0.8, false),
-            ..Default::default()
-          })
-          .with_children(|parent| {
-            parent
-              .spawn_bundle(SpriteSheetBundle {
-                texture_atlas: texture_atlas_handle.clone(),
-                transform: Transform::from_translation(
-                  Vec3::new(direction.x, direction.y, 0.0) * 35.,
-                )
-                .with_rotation(Quat::from_rotation_arc(
-                  Vec3::X,
-                  Vec3::new(direction.x, direction.y, 0.0),
-                )),
-                ..Default::default()
-              })
-              .insert(AtlasAnimationDefinition {
-                start: 0,
-                end: 15,
-                fps: 20.,
-                repeat: false,
-                random_start: false,
-              })
-              .insert(AtlasAnimation::default())
-              .insert(CollisionShape::Cuboid {
-                half_extends: Vec3::new(25., 10., 0.),
-                border_radius: None,
-              });
-            parent
-              .spawn()
-              .insert(Transform::from_rotation(Quat::from_rotation_arc(
-                Vec3::X,
-                Vec3::new(direction.x, direction.y, 0.0),
-              )))
-              .insert(GlobalTransform::default())
-              .insert(RigidBody::Dynamic)
-              .insert(CollisionShape::Cuboid {
-                half_extends: Vec3::new(1., 5., 0.),
-                border_radius: None,
-              })
-              .insert(PhysicMaterial {
-                density: 100000.0,
-                ..Default::default()
-              })
-              .insert(Damping::from_linear(5.0))
-              .insert(
-                CollisionLayers::none()
-                  .with_group(PhysicsLayers::AttackDead)
-                  .with_mask(PhysicsLayers::Corpses),
-              )
-              .insert(Velocity::from_linear(
-                Vec3::from((direction.clone(), 0.)) * 300.0,
-              ));
-          });
-      }
-      _ => {
-        warn!("unimplemented action {:?}", action);
-      }
-    }
-  }
-}
+//   for action in actions.iter() {
+//     match action {
+//       CombatAction::BasicAttack(origin, direction) => {
+//         commands
+//           .spawn()
+//           .insert(Transform::from_translation(Vec3::new(
+//             origin.x,
+//             origin.y,
+//             crate::z::PLAYER_ATTACK,
+//           )))
+//           .insert(GlobalTransform::default())
+//           .insert(RigidBody::Sensor)
+//           .insert(
+//             CollisionLayers::none()
+//               .with_group(PhysicsLayers::Attacks)
+//               .with_mask(PhysicsLayers::Enemies),
+//           )
+//           .insert(AreaOfEffect {
+//             damage: 100.,
+//             tick_timer: Timer::from_seconds(0.01, false),
+//             kill_timer: Timer::from_seconds(0.8, false),
+//             ..Default::default()
+//           })
+//           .with_children(|parent| {
+//             parent
+//               .spawn_bundle(SpriteSheetBundle {
+//                 texture_atlas: texture_atlas_handle.clone(),
+//                 transform: Transform::from_translation(
+//                   Vec3::new(direction.x, direction.y, 0.0) * 35.,
+//                 )
+//                 .with_rotation(Quat::from_rotation_arc(
+//                   Vec3::X,
+//                   Vec3::new(direction.x, direction.y, 0.0),
+//                 )),
+//                 ..Default::default()
+//               })
+//               .insert(AtlasAnimationDefinition {
+//                 start: 0,
+//                 end: 15,
+//                 fps: 20.,
+//                 repeat: false,
+//                 random_start: false,
+//               })
+//               .insert(AtlasAnimation::default())
+//               .insert(CollisionShape::Cuboid {
+//                 half_extends: Vec3::new(25., 10., 0.),
+//                 border_radius: None,
+//               });
+//             parent
+//               .spawn()
+//               .insert(Transform::from_rotation(Quat::from_rotation_arc(
+//                 Vec3::X,
+//                 Vec3::new(direction.x, direction.y, 0.0),
+//               )))
+//               .insert(GlobalTransform::default())
+//               .insert(RigidBody::Dynamic)
+//               .insert(CollisionShape::Cuboid {
+//                 half_extends: Vec3::new(1., 5., 0.),
+//                 border_radius: None,
+//               })
+//               .insert(PhysicMaterial {
+//                 density: 100000.0,
+//                 ..Default::default()
+//               })
+//               .insert(Damping::from_linear(5.0))
+//               .insert(
+//                 CollisionLayers::none()
+//                   .with_group(PhysicsLayers::AttackDead)
+//                   .with_mask(PhysicsLayers::Corpses),
+//               )
+//               .insert(Velocity::from_linear(
+//                 Vec3::from((direction.clone(), 0.)) * 300.0,
+//               ));
+//           });
+//       }
+//       _ => {
+//         warn!("unimplemented action {:?}", action);
+//       }
+//     }
+//   }
+// }
 
 // pub struct AttackDefinition {
 //   pub texture_atlas: Handle<TextureAtlas>,
@@ -248,15 +299,9 @@ fn setup(mut settings: ResMut<FlyingTextSettings>, asset_server: Res<AssetServer
   };
 }
 
-fn animate_attack(time: Res<Time>, mut qry: Query<&mut Transform, With<AreaOfEffect>>) {
-  for mut transform in qry.iter_mut() {
-    if transform.scale.x < 1.0 {
-      transform.scale = transform.scale + Vec3::splat(time.delta_seconds() * 1.0);
-    } else {
-      transform.scale = Vec3::splat(1.);
-    }
-  }
-}
+fn prepare_spells () {}
+fn despawn_cancelled_prepared_spells () {} // despawn if has prepare_entity and not preparing
+fn cast_spells() {} // update spell status, spawn aoes
 
 #[derive(Component)]
 pub struct CombatPlugin;
@@ -264,13 +309,12 @@ pub struct CombatPlugin;
 impl Plugin for CombatPlugin {
   fn build(&self, app: &mut App) {
     app
-      .add_event::<CombatAction>()
       .add_event::<CombatEvent>()
       .init_resource::<FlyingTextSettings>()
       .add_startup_system(setup)
       .add_system(show_damage)
       //.add_system(animate_attack)
-      .add_system(spawn_aoes)
+      //.add_system(spawn_aoes)
       .add_system(find_victims)
       .add_system(damage_victims)
       .add_system(despawn_attacks);

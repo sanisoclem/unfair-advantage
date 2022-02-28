@@ -86,6 +86,8 @@ fn setup_test_level(
     let pos = Vec2::new(((i % r) - r / 2 + 11) as f32, (i / r) as f32);
     enemy_cmd.send(EnemyCommand::Spawn(EnemyType::Goblin, pos * sz));
   }
+
+  enemy_cmd.send(EnemyCommand::Spawn(EnemyType::Boss, Vec2::new(0., -300.)));
 }
 
 fn teardown_level(mut player_state: ResMut<State<PlayerState>>) {

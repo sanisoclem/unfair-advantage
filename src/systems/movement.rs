@@ -4,7 +4,6 @@ use heron::{PhysicMaterial, Velocity};
 #[derive(Component)]
 pub struct Movement {
   pub target: Option<Vec2>,
-  pub last_direction: Vec2,
   pub speed: f32,
   pub enabled: bool,
 }
@@ -19,8 +18,6 @@ fn movement(time: Res<Time>, mut qry: Query<(&mut Movement, &mut Transform), Wit
       let diff = transform.translation.truncate() - target;
       let factor = mov.speed * time.delta_seconds();
       let z = transform.translation.z;
-
-      mov.last_direction = diff.normalize() * -1.;
 
       if diff.length() <= factor {
         transform.translation = Vec3::from((target, z));

@@ -18,6 +18,7 @@ pub enum EnemyCommand {
 pub enum EnemyType {
   Slime,
   Goblin,
+  Boss,
   // Eye,
 }
 
@@ -26,6 +27,7 @@ pub struct EnemyDefinition {
   pub idle: AtlasAnimationDefinition,
   pub death: AtlasAnimationDefinition,
   pub max_hp: f32,
+  pub fodder: bool,
 }
 
 #[derive(Default)]
@@ -50,7 +52,7 @@ pub fn spawn_enemies(
           commands
             .spawn_bundle(SpriteSheetBundle {
               texture_atlas: def.texture_atlas.clone(),
-              transform: Transform::from_translation(Vec3::from((pos.clone(), crate::z::ENEMY))),
+              transform: Transform::from_translation(Vec3::from((pos.clone(), crate::z::ENEMY))).with_scale(Vec3::splat(1.0)),
               ..Default::default()
             })
             .insert(Combatant {
@@ -84,7 +86,6 @@ pub fn spawn_enemies(
                 .with_mask(PhysicsLayers::World),
             )
             .insert(Movement {
-              last_direction: Vec2::Y * -1.,
               speed: 100.0,
               enabled: true,
               target: None,
@@ -160,6 +161,7 @@ fn setup(
     EnemyType::Slime,
     EnemyDefinition {
       max_hp: 10.,
+      fodder: true,
       texture_atlas: texture_atlas_handle.clone(),
       idle: AtlasAnimationDefinition {
         start: 84,
@@ -182,6 +184,7 @@ fn setup(
     EnemyType::Goblin,
     EnemyDefinition {
       max_hp: 10.,
+      fodder: true,
       texture_atlas: texture_atlas_handle.clone(),
       idle: AtlasAnimationDefinition {
         start: 28,
@@ -193,6 +196,33 @@ fn setup(
       death: AtlasAnimationDefinition {
         start: 28,
         end: 41,
+        fps: 10.,
+        repeat: false,
+        random_start: false,
+      },
+    },
+  );
+
+  let texture_handle = asset_server.load("boss.png");
+  let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(256.0, 256.0), 24, 17);
+  let texture_atlas_handle = texture_atlases.add(texture_atlas);
+
+  enemies.insert(
+    EnemyType::Boss,
+    EnemyDefinition {
+      max_hp: 10.,
+      fodder: true,
+      texture_atlas: texture_atlas_handle.clone(),
+      idle: AtlasAnimationDefinition {
+        start: 336,
+        end: 336 + 11,
+        fps: 10.,
+        repeat: true,
+        random_start: true,
+      },
+      death: AtlasAnimationDefinition {
+        start: 0,
+        end: 23,
         fps: 10.,
         repeat: false,
         random_start: false,

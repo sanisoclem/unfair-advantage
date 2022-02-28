@@ -147,10 +147,6 @@ fn debug_player(
           ui.label(format!("z {:?}", transform.translation.z));
           // ui.add(egui::TextEdit::singleline(transform.translation.z));
           ui.end_row();
-          ui.label(format!("last x {:?}", movement.last_direction.x));
-          ui.end_row();
-          ui.label(format!("last y {:?}", movement.last_direction.y));
-          ui.end_row();
         });
     });
   }

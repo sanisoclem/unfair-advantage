@@ -15,7 +15,6 @@ fn setup(mut commands: Commands) {
     .spawn_bundle(cam_bundle)
     .insert(MainCamera)
     .insert(Movement {
-      last_direction: Vec2::default(),
       speed: 600.0,
       enabled: true,
       target: None,

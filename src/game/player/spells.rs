@@ -21,9 +21,9 @@ pub fn build_spells(
       damage: 100.,
       dot: false,
       damage_tick: 0.0,
-      prepare_duration: 0.7,
-      cast_duration: 0.3,
-      recovery_duration: 0.7,
+      prepare_duration: 1.1667/2.,
+      cast_duration: 0.1667/2.,
+      recovery_duration: 0.6667/2.,
       prepare_sprite: Some(SpellSprite {
         texture_atlas: texture_atlas_handle.clone(),
         start_frame: 0,

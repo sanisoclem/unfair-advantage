@@ -8,6 +8,14 @@ pub enum CombatEvent {
   DamageApplied(Entity, f32, Vec2, bool),
 }
 
+#[derive(Debug)]
+pub enum CombatAction {
+  PrepareSpell(Entity, SpellType, Vec2),
+  CastSpell(Entity, SpellType, Vec2),
+  RecoverFromSpell(Entity, SpellType, Vec2),
+  CancelSpell(Entity)
+}
+
 #[derive(Component)]
 pub struct Combatant {
   pub hp: f32,
@@ -39,8 +47,8 @@ pub struct Spellbook {
 
 #[derive(Component)]
 pub struct ActiveSpell {
-  status: ActiveSpellStatus,
-  prepare_entity: Option<Entity>
+  pub status: ActiveSpellStatus,
+  pub prepare_entity: Option<Entity>
 }
 
 #[derive(Hash, Copy, Clone, Eq, PartialEq, Debug)]

@@ -1,3 +1,4 @@
+use crate::systems::ActiveSpell;
 use crate::systems::AtlasAnimation;
 use crate::systems::Combatant;
 use crate::systems::Immortal;
@@ -15,15 +16,10 @@ use crate::systems::{cleanup_system, CameraTarget, MouseInfo, Movement, PhysicsL
 mod animations;
 mod spells;
 
-#[derive(Clone, Eq, PartialEq, Debug, Hash)]
-pub enum PlayerState {
-  Despawned,
-  Active,
-}
-
 #[derive(Component, Default)]
 pub struct PlayerComponent {
   pub state: PlayerStateMachine,
+  pub version: u32, // used to detect if there are actual chanages to state
 }
 
 #[derive(Component, Default)]
@@ -33,14 +29,29 @@ pub struct PlayerDash {
   pub cooldown: f32,
   pub on_cooldown: bool,
   pub timer: Timer,
-  pub cd_timer: Timer
+  pub cd_timer: Timer,
+  pub player_state_version: u32,
+}
+
+#[derive(Component, Default)]
+pub struct PlayerSpells {
+  pub timer: Timer,
+  pub player_state_version: u32,
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Hash)]
+pub enum PlayerState {
+  Despawned,
+  Active,
 }
 
 pub enum PlayerCommand {
   Stop,
   Move(Vec2),
   Dash(Vec2),
-  CastSpell(SpellType, Vec2),
+  PrepareSpell(SpellType, Vec2),
+  CastSpell,
+  RecoverFromSpell,
 }
 
 #[derive(Debug)]
@@ -49,8 +60,8 @@ pub enum PlayerStateMachine {
   Running(Vec2),
   Dashing(Vec2),
   PreparingSpell(SpellType, Vec2),
-  CastingSpell,
-  RecoveringFromSpell,
+  CastingSpell(SpellType, Vec2),
+  RecoveringFromSpell(SpellType, Vec2),
   Bored,
 }
 impl Default for PlayerStateMachine {
@@ -76,8 +87,8 @@ impl From<&PlayerStateMachine> for PlayerAnimationState {
       PlayerStateMachine::Running(_) => PlayerAnimationState::Running,
       PlayerStateMachine::Dashing(_) => PlayerAnimationState::Dashing,
       PlayerStateMachine::PreparingSpell(_, _) => PlayerAnimationState::PreparingSpell,
-      PlayerStateMachine::CastingSpell => PlayerAnimationState::CastingSpell,
-      PlayerStateMachine::RecoveringFromSpell => PlayerAnimationState::RecoveringFromSpell,
+      PlayerStateMachine::CastingSpell(_, _) => PlayerAnimationState::CastingSpell,
+      PlayerStateMachine::RecoveringFromSpell(_, _) => PlayerAnimationState::RecoveringFromSpell,
       PlayerStateMachine::Bored => PlayerAnimationState::Bored,
     }
   }
@@ -113,16 +124,23 @@ fn spawn_player(
       state: PlayerAnimationState::from(&player.state),
       direction_vec: initial_direction,
       direction: SimpleDirection::from(initial_direction),
-      animations: animations::build_animations()
+      animations: animations::build_animations(),
     })
     // mark this as the player
     .insert(player)
     // we can get damaged and die
-    .insert(Combatant { hp: 1000., hp_max: 1000. })
+    .insert(Combatant {
+      hp: 1000.,
+      hp_max: 1000.,
+    })
     // but we are immortal
     .insert(Immortal)
-    // we have a spellbook to case spells
-    .insert(Spellbook { spells: spells::build_spells(asset_server, texture_atlases) })
+    // we have a spellbook to cast spells
+    .insert(Spellbook {
+      spells: spells::build_spells(asset_server, texture_atlases),
+    })
+    // we can cast spells
+    .insert(PlayerSpells::default())
     // we can move around
     .insert(Movement {
       speed: 150.0,
@@ -130,7 +148,7 @@ fn spawn_player(
       target: None,
     })
     // we can dash
-    .insert(PlayerDash{
+    .insert(PlayerDash {
       dash_speed: 500.0,
       dash_duration: 0.3,
       cooldown: 2.0,
@@ -149,13 +167,12 @@ fn spawn_player(
         .with_group(PhysicsLayers::Player)
         .with_mask(PhysicsLayers::Enemies)
         .with_mask(PhysicsLayers::World),
-    ).with_children(|builder|{
+    )
+    .with_children(|builder| {
       builder
         .spawn()
         .insert(Transform::from_translation(Vec3::new(0.0, -10.0, 0.0)))
-        .insert(CollisionShape::Sphere {
-          radius: 10.
-        });
+        .insert(CollisionShape::Sphere { radius: 10. });
     });
 }
 
@@ -172,14 +189,16 @@ fn read_input(
       evts.send(PlayerCommand::Move(mouse_info.world_pos2));
     }
     if mouse_button_input.just_pressed(MouseButton::Right) {
-      evts.send(PlayerCommand::CastSpell(
+      evts.send(PlayerCommand::PrepareSpell(
         SpellType::BasicAttack,
         (mouse_info.world_pos2 - player_pos).normalize(),
       ));
     }
     if keyboard_input.just_pressed(KeyCode::Space) {
-      evts.send(PlayerCommand::Dash((mouse_info.world_pos2 - player_pos).normalize()));
-      info!("Sending dash command");
+      evts.send(PlayerCommand::Dash(
+        (mouse_info.world_pos2 - player_pos).normalize(),
+      ));
+      //info!("Sending dash command");
     }
   }
 }
@@ -199,28 +218,50 @@ fn update_state(
         (PlayerCommand::Stop, _) => {
           player.state = PlayerStateMachine::Idle;
           character.state = PlayerAnimationState::Idle;
+          player.version += 1;
         }
         (PlayerCommand::Move(dir), PlayerStateMachine::Running(_))
         | (PlayerCommand::Move(dir), PlayerStateMachine::Idle)
+        | (PlayerCommand::Move(dir), PlayerStateMachine::RecoveringFromSpell(_,_))
+        | (PlayerCommand::Move(dir), PlayerStateMachine::PreparingSpell(_,_))
         | (PlayerCommand::Move(dir), PlayerStateMachine::Bored) => {
           player.state = PlayerStateMachine::Running(dir.clone());
           character.state = PlayerAnimationState::Running;
           character.direction_vec = (dir.clone() - transform.translation.xy()).normalize();
+          player.version += 1;
         }
         (PlayerCommand::Dash(dir), _) => {
           if !dash.on_cooldown {
             player.state = PlayerStateMachine::Dashing(dir.clone());
             character.state = PlayerAnimationState::Dashing;
             character.direction_vec = dir.clone();
-            info!("set dash state");
+            player.version += 1;
+            //info!("set dash state");
           }
         }
-        (PlayerCommand::CastSpell(spell_type, dir), PlayerStateMachine::Bored)
-        | (PlayerCommand::CastSpell(spell_type, dir), PlayerStateMachine::Running(_))
-        | (PlayerCommand::CastSpell(spell_type, dir), PlayerStateMachine::Idle) => {
-            player.state = PlayerStateMachine::PreparingSpell(*spell_type, dir.clone());
-            character.state = PlayerAnimationState::PreparingSpell;
-            character.direction_vec = dir.normalize();
+        (PlayerCommand::PrepareSpell(spell_type, dir), PlayerStateMachine::Bored)
+        | (PlayerCommand::PrepareSpell(spell_type, dir), PlayerStateMachine::Running(_))
+        | (PlayerCommand::PrepareSpell(spell_type, dir), PlayerStateMachine::Idle) => {
+          player.state = PlayerStateMachine::PreparingSpell(*spell_type, dir.clone());
+          character.state = PlayerAnimationState::PreparingSpell;
+          character.direction_vec = dir.normalize();
+          player.version += 1;
+        },
+        (PlayerCommand::CastSpell, PlayerStateMachine::PreparingSpell(spell_type, dir)) => {
+          let st = spell_type.clone();
+          let d = dir.clone();
+          player.state = PlayerStateMachine::CastingSpell(st, d);
+          character.state = PlayerAnimationState::CastingSpell;
+          character.direction_vec = d.normalize();
+          player.version += 1;
+        },
+        (PlayerCommand::RecoverFromSpell, PlayerStateMachine::CastingSpell(spell_type, dir)) => {
+          let st = spell_type.clone();
+          let d = dir.clone();
+          player.state = PlayerStateMachine::RecoveringFromSpell(st, d);
+          character.state = PlayerAnimationState::RecoveringFromSpell;
+          character.direction_vec = d.normalize();
+          player.version += 1;
         }
         _ => {
           // can't execute command
@@ -229,6 +270,55 @@ fn update_state(
       }
 
       info!("player state: {:?}", player.state);
+    }
+  }
+}
+
+fn sync_spells(
+  mut qry: Query<(&PlayerComponent, &mut PlayerSpells, &Spellbook), Changed<PlayerComponent>>,
+) {
+  for (player, mut active_spell, spells) in &mut qry.iter_mut() {
+    if active_spell.player_state_version == player.version {
+      continue;
+    }
+
+    match &player.state {
+      PlayerStateMachine::PreparingSpell(spell_type, _) => {
+        let spell = spells.spells.get(spell_type).expect("should find spell");
+        active_spell.timer = Timer::from_seconds(spell.prepare_duration, false);
+        info!("set prep timer")
+      },
+      PlayerStateMachine::CastingSpell(spell_type, _) => {
+        let spell = spells.spells.get(spell_type).expect("should find spell");
+        active_spell.timer = Timer::from_seconds(spell.cast_duration, false);
+      },
+      PlayerStateMachine::RecoveringFromSpell(spell_type, _) => {
+        let spell = spells.spells.get(spell_type).expect("should find spell");
+        active_spell.timer = Timer::from_seconds(spell.recovery_duration, false);
+      },
+      _ => {}
+    }
+  }
+}
+
+fn run_spells(time: Res<Time>, mut qry: Query<(&PlayerComponent, &mut PlayerSpells)>, mut evts: EventWriter<PlayerCommand>) {
+  for (player, mut active_spell) in &mut qry.iter_mut() {
+
+    active_spell.timer.tick(time.delta());
+
+    if active_spell.timer.just_finished() {
+      match &player.state {
+        PlayerStateMachine::PreparingSpell(_, _) => {
+          evts.send(PlayerCommand::CastSpell);
+        },
+        PlayerStateMachine::CastingSpell(_, _) => {
+          evts.send(PlayerCommand::RecoverFromSpell);
+        },
+        PlayerStateMachine::RecoveringFromSpell(_, _) => {
+          evts.send(PlayerCommand::Stop);
+        },
+        _ => {}
+      }
     }
   }
 }
@@ -255,18 +345,26 @@ fn stop_when_destination_reached(
   }
 }
 
-fn start_dash_player(mut qry: Query<(&PlayerComponent, &mut PlayerDash), Changed<PlayerComponent>>) {
+fn start_dash_player(
+  mut qry: Query<(&PlayerComponent, &mut PlayerDash), Changed<PlayerComponent>>,
+) {
   for (player, mut dash) in &mut qry.iter_mut() {
     if let PlayerStateMachine::Dashing(_) = &player.state {
-      info!("Start dashing");
-      dash.timer = Timer::from_seconds(dash.dash_duration, false);
-      dash.cd_timer = Timer::from_seconds(dash.cooldown, false);
-      dash.on_cooldown = true;
+      if player.version > dash.player_state_version {
+        //info!("Start dashing");
+        dash.player_state_version = player.version;
+        dash.timer = Timer::from_seconds(dash.dash_duration, false);
+        dash.cd_timer = Timer::from_seconds(dash.cooldown, false);
+        dash.on_cooldown = true;
+      }
     }
   }
 }
-fn dash_player(time: Res<Time>, mut qry: Query<(&PlayerComponent, &mut Transform, &mut PlayerDash)>,
-mut evts: EventWriter<PlayerCommand>,) {
+fn dash_player(
+  time: Res<Time>,
+  mut qry: Query<(&PlayerComponent, &mut Transform, &mut PlayerDash)>,
+  mut evts: EventWriter<PlayerCommand>,
+) {
   for (player, mut transform, mut dash) in &mut qry.iter_mut() {
     let speed = dash.dash_speed;
 
@@ -274,7 +372,7 @@ mut evts: EventWriter<PlayerCommand>,) {
       dash.timer.tick(time.delta());
       if dash.timer.just_finished() {
         evts.send(PlayerCommand::Stop);
-        info!("stop dashing");
+        //info!("stop dashing");
       } else {
         transform.translation.x += dir.x * speed * time.delta_seconds();
         transform.translation.y += dir.y * speed * time.delta_seconds();
@@ -287,7 +385,6 @@ mut evts: EventWriter<PlayerCommand>,) {
     }
   }
 }
-
 
 pub struct PlayerPlugin;
 
@@ -308,8 +405,9 @@ impl Plugin for PlayerPlugin {
           .with_system(stop_when_destination_reached)
           .with_system(update_state)
           .with_system(start_dash_player)
-          .with_system(dash_player),
-
+          .with_system(dash_player)
+          .with_system(sync_spells)
+          .with_system(run_spells),
       );
   }
 }

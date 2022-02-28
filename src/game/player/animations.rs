@@ -167,5 +167,87 @@ pub fn build_animations(
       random_start: true,
     },
   );
+
+  // DASH
+  animations.insert(
+    (SimpleDirection::East, PlayerAnimationState::Dashing),
+    AtlasAnimationDefinition {
+      start: 216,
+      end: 227,
+      fps: 10.,
+      repeat: true,
+      random_start: true,
+    },
+  );
+  animations.insert(
+    (SimpleDirection::North, PlayerAnimationState::Dashing),
+    AtlasAnimationDefinition {
+      start: 216 + 24,
+      end: 227 + 24,
+      fps: 10.,
+      repeat: true,
+      random_start: true,
+    },
+  );
+  animations.insert(
+    (SimpleDirection::NorthWest, PlayerAnimationState::Dashing),
+    AtlasAnimationDefinition {
+      start: 216 + 24 + 24,
+      end: 227 + 24 + 24,
+      fps: 10.,
+      repeat: true,
+      random_start: true,
+    },
+  );
+  animations.insert(
+    (SimpleDirection::NorthEast, PlayerAnimationState::Dashing),
+    AtlasAnimationDefinition {
+      start: 216 + 24 + 24 + 24,
+      end: 227 + 24 + 24 + 24,
+      fps: 10.,
+      repeat: true,
+      random_start: true,
+    },
+  );
+  animations.insert(
+    (SimpleDirection::South, PlayerAnimationState::Dashing),
+    AtlasAnimationDefinition {
+      start: 216 + 24 + 24 + 24 + 24,
+      end: 227 + 24 + 24 + 24 + 24,
+      fps: 10.,
+      repeat: true,
+      random_start: true,
+    },
+  );
+  animations.insert(
+    (SimpleDirection::SouthEast, PlayerAnimationState::Dashing),
+    AtlasAnimationDefinition {
+      start: 216 + 24 + 24 + 24 + 24 + 24,
+      end: 227 + 24 + 24 + 24 + 24 + 24,
+      fps: 10.,
+      repeat: true,
+      random_start: true,
+    },
+  );
+  animations.insert(
+    (SimpleDirection::SouthWest, PlayerAnimationState::Dashing),
+    AtlasAnimationDefinition {
+      start: 216 + 24 + 24 + 24 + 24 + 24 + 24,
+      end: 227 + 24 + 24 + 24 + 24 + 24 + 24,
+      fps: 10.,
+      repeat: true,
+      random_start: true,
+    },
+  );
+  animations.insert(
+    (SimpleDirection::West, PlayerAnimationState::Dashing),
+    AtlasAnimationDefinition {
+      start: 216 + 24 + 24 + 24 + 24 + 24 + 24 + 24,
+      end: 227 + 24 + 24 + 24 + 24 + 24 + 24 + 24,
+      fps: 10.,
+      repeat: true,
+      random_start: true,
+    },
+  );
   animations
 }

@@ -23,9 +23,17 @@ pub enum PlayerState {
 
 #[derive(Component, Default)]
 pub struct PlayerComponent {
+  pub state: PlayerStateMachine,
+}
+
+#[derive(Component, Default)]
+pub struct PlayerDash {
   pub dash_speed: f32,
   pub dash_duration: f32,
-  pub state: PlayerStateMachine,
+  pub cooldown: f32,
+  pub on_cooldown: bool,
+  pub timer: Timer,
+  pub cd_timer: Timer
 }
 
 pub enum PlayerCommand {
@@ -39,8 +47,8 @@ pub enum PlayerCommand {
 pub enum PlayerStateMachine {
   Idle,
   Running(Vec2),
-  Dashing(Vec2, Timer),
-  PreparingSpell(SpellType, Vec2, Timer),
+  Dashing(Vec2),
+  PreparingSpell(SpellType, Vec2),
   CastingSpell,
   RecoveringFromSpell,
   Bored,
@@ -66,8 +74,8 @@ impl From<&PlayerStateMachine> for PlayerAnimationState {
     match state {
       PlayerStateMachine::Idle => PlayerAnimationState::Idle,
       PlayerStateMachine::Running(_) => PlayerAnimationState::Running,
-      PlayerStateMachine::Dashing(_, _) => PlayerAnimationState::Dashing,
-      PlayerStateMachine::PreparingSpell(_, _, _) => PlayerAnimationState::PreparingSpell,
+      PlayerStateMachine::Dashing(_) => PlayerAnimationState::Dashing,
+      PlayerStateMachine::PreparingSpell(_, _) => PlayerAnimationState::PreparingSpell,
       PlayerStateMachine::CastingSpell => PlayerAnimationState::CastingSpell,
       PlayerStateMachine::RecoveringFromSpell => PlayerAnimationState::RecoveringFromSpell,
       PlayerStateMachine::Bored => PlayerAnimationState::Bored,
@@ -84,11 +92,7 @@ fn spawn_player(
   let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(256.0, 256.0), 24, 17);
   let texture_atlas_handle = texture_atlases.add(texture_atlas);
 
-  let player = PlayerComponent{
-    dash_speed: 1000.,
-    dash_duration: 0.5,
-    ..Default::default()
-  };
+  let player = PlayerComponent::default();
   let initial_direction = Vec2::Y * -1.;
 
   commands
@@ -124,6 +128,13 @@ fn spawn_player(
       speed: 150.0,
       enabled: true,
       target: None,
+    })
+    // we can dash
+    .insert(PlayerDash{
+      dash_speed: 500.0,
+      dash_duration: 0.3,
+      cooldown: 2.0,
+      ..Default::default()
     })
     // physics
     .insert(RigidBody::KinematicPositionBased)
@@ -178,16 +189,14 @@ fn update_state(
   mut qry: Query<(
     &mut PlayerComponent,
     &mut TopDownCharacter<PlayerAnimationState>,
-    &Spellbook,
+    &PlayerDash,
     &Transform,
   )>,
 ) {
-  if let Ok((mut player, mut character, spellbook, transform)) = qry.get_single_mut() {
+  if let Ok((mut player, mut character, dash, transform)) = qry.get_single_mut() {
     for evt in evts.iter() {
       match (evt, &player.state) {
-        (PlayerCommand::Stop, PlayerStateMachine::Running(_))
-        | (PlayerCommand::Stop, PlayerStateMachine::PreparingSpell(_,_,_))
-        | (PlayerCommand::Stop, PlayerStateMachine::Bored) => {
+        (PlayerCommand::Stop, _) => {
           player.state = PlayerStateMachine::Idle;
           character.state = PlayerAnimationState::Idle;
         }
@@ -199,19 +208,19 @@ fn update_state(
           character.direction_vec = (dir.clone() - transform.translation.xy()).normalize();
         }
         (PlayerCommand::Dash(dir), _) => {
-          player.state = PlayerStateMachine::Dashing(dir.clone(), Timer::from_seconds(player.dash_duration, false));
-          character.state = PlayerAnimationState::Dashing;
-          character.direction_vec = dir.clone();
-          info!("set dash state");
+          if !dash.on_cooldown {
+            player.state = PlayerStateMachine::Dashing(dir.clone());
+            character.state = PlayerAnimationState::Dashing;
+            character.direction_vec = dir.clone();
+            info!("set dash state");
+          }
         }
         (PlayerCommand::CastSpell(spell_type, dir), PlayerStateMachine::Bored)
         | (PlayerCommand::CastSpell(spell_type, dir), PlayerStateMachine::Running(_))
         | (PlayerCommand::CastSpell(spell_type, dir), PlayerStateMachine::Idle) => {
-          if let Some(spell) = spellbook.spells.get(spell_type) {
-            player.state = PlayerStateMachine::PreparingSpell(*spell_type, dir.clone(), Timer::from_seconds(spell.prepare_duration, false));
+            player.state = PlayerStateMachine::PreparingSpell(*spell_type, dir.clone());
             character.state = PlayerAnimationState::PreparingSpell;
             character.direction_vec = dir.normalize();
-          }
         }
         _ => {
           // can't execute command
@@ -246,18 +255,34 @@ fn stop_when_destination_reached(
   }
 }
 
-fn dash_player(time: Res<Time>, mut qry: Query<(&mut PlayerComponent, &mut Transform)>) {
-  for (mut player, mut transform) in &mut qry.iter_mut() {
-    let speed = player.dash_speed;
-    if let PlayerStateMachine::Dashing(dir, timer) = &mut player.state {
-      info!("actually dashing");
-      timer.tick(time.delta());
-      if timer.just_finished() {
-        player.state = PlayerStateMachine::Idle;
+fn start_dash_player(mut qry: Query<(&PlayerComponent, &mut PlayerDash), Changed<PlayerComponent>>) {
+  for (player, mut dash) in &mut qry.iter_mut() {
+    if let PlayerStateMachine::Dashing(_) = &player.state {
+      info!("Start dashing");
+      dash.timer = Timer::from_seconds(dash.dash_duration, false);
+      dash.cd_timer = Timer::from_seconds(dash.cooldown, false);
+      dash.on_cooldown = true;
+    }
+  }
+}
+fn dash_player(time: Res<Time>, mut qry: Query<(&PlayerComponent, &mut Transform, &mut PlayerDash)>,
+mut evts: EventWriter<PlayerCommand>,) {
+  for (player, mut transform, mut dash) in &mut qry.iter_mut() {
+    let speed = dash.dash_speed;
+
+    if let PlayerStateMachine::Dashing(dir) = &player.state {
+      dash.timer.tick(time.delta());
+      if dash.timer.just_finished() {
+        evts.send(PlayerCommand::Stop);
         info!("stop dashing");
       } else {
         transform.translation.x += dir.x * speed * time.delta_seconds();
         transform.translation.y += dir.y * speed * time.delta_seconds();
+      }
+    } else {
+      dash.cd_timer.tick(time.delta());
+      if dash.cd_timer.just_finished() {
+        dash.on_cooldown = false;
       }
     }
   }
@@ -282,6 +307,7 @@ impl Plugin for PlayerPlugin {
           .with_system(move_player)
           .with_system(stop_when_destination_reached)
           .with_system(update_state)
+          .with_system(start_dash_player)
           .with_system(dash_player),
 
       );

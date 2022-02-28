@@ -1,4 +1,4 @@
-use crate::systems::ActiveSpell;
+use crate::systems::CombatAction;
 use crate::systems::AtlasAnimation;
 use crate::systems::Combatant;
 use crate::systems::Immortal;
@@ -130,8 +130,8 @@ fn spawn_player(
     .insert(player)
     // we can get damaged and die
     .insert(Combatant {
-      hp: 1000.,
-      hp_max: 1000.,
+      hp: 1.,
+      hp_max: 1.,
     })
     // but we are immortal
     .insert(Immortal)
@@ -275,28 +275,36 @@ fn update_state(
 }
 
 fn sync_spells(
-  mut qry: Query<(&PlayerComponent, &mut PlayerSpells, &Spellbook), Changed<PlayerComponent>>,
+  mut qry: Query<(Entity, &PlayerComponent, &mut PlayerSpells, &Spellbook), Changed<PlayerComponent>>,
+  mut evts: EventWriter<CombatAction>
 ) {
-  for (player, mut active_spell, spells) in &mut qry.iter_mut() {
+  for (entity, player, mut active_spell, spells) in &mut qry.iter_mut() {
     if active_spell.player_state_version == player.version {
       continue;
     }
 
     match &player.state {
-      PlayerStateMachine::PreparingSpell(spell_type, _) => {
+      PlayerStateMachine::PreparingSpell(spell_type, dir) => {
         let spell = spells.spells.get(spell_type).expect("should find spell");
         active_spell.timer = Timer::from_seconds(spell.prepare_duration, false);
-        info!("set prep timer")
+        evts.send(CombatAction::PrepareSpell(entity, spell_type.clone(), dir.clone()));
       },
-      PlayerStateMachine::CastingSpell(spell_type, _) => {
+      PlayerStateMachine::CastingSpell(spell_type, dir) => {
         let spell = spells.spells.get(spell_type).expect("should find spell");
         active_spell.timer = Timer::from_seconds(spell.cast_duration, false);
+        evts.send(CombatAction::CastSpell(entity, spell_type.clone(), dir.clone()));
       },
-      PlayerStateMachine::RecoveringFromSpell(spell_type, _) => {
+      PlayerStateMachine::RecoveringFromSpell(spell_type, dir) => {
         let spell = spells.spells.get(spell_type).expect("should find spell");
         active_spell.timer = Timer::from_seconds(spell.recovery_duration, false);
+        evts.send(CombatAction::RecoverFromSpell(entity, spell_type.clone(), dir.clone()));
       },
-      _ => {}
+      _ => {
+        if !active_spell.timer.finished() {
+          active_spell.timer.reset();
+          evts.send(CombatAction::CancelSpell(entity));
+        }
+      }
     }
   }
 }

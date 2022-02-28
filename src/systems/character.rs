@@ -102,7 +102,7 @@ where
       {
         *animation = anim.clone();
 
-      info!("animation updated {:?}", character.direction);
+      //info!("animation updated {:?}", character.direction);
       }
     }
   }
@@ -117,7 +117,7 @@ where
         .get(&(character.direction, character.state))
         .expect("No animation for direction");
       commands.entity(entity).insert(anim.clone());
-      info!("inserted new animation")
+      //info!("inserted new animation")
     }
   }
 }

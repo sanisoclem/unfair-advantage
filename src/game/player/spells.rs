@@ -18,7 +18,8 @@ pub fn build_spells(
     SpellType::BasicAttack,
     Spell {
       status: SpellStatus::Ready,
-      damage: 100.,
+      damage_min: 100.,
+      damage_max: 1000.,
       dot: false,
       damage_tick: 0.0,
       prepare_duration: 1.1667/2.,
@@ -30,7 +31,7 @@ pub fn build_spells(
         end_frame: 6,
         repeatable: false,
         fps: 0.,
-        translation: Vec2::new(-21., 0.),
+        translation: Vec2::new(35., 0.),
       }),
       cast_sprite: Some(SpellSprite {
         texture_atlas: texture_atlas_handle.clone(),
@@ -38,7 +39,7 @@ pub fn build_spells(
         end_frame: 9,
         repeatable: false,
         fps: 0.,
-        translation: Vec2::new(-21., 0.),
+        translation: Vec2::new(35., 0.),
       }),
       recovery_sprite: Some(SpellSprite {
         texture_atlas: texture_atlas_handle,
@@ -46,7 +47,7 @@ pub fn build_spells(
         end_frame: 15,
         repeatable: false,
         fps: 0.,
-        translation: Vec2::new(-21., 0.),
+        translation: Vec2::new(35., 0.),
       }),
       projectile_sprite: None,
       shape: CollisionShape::Cuboid {

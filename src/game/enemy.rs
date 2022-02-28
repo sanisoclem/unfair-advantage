@@ -1,3 +1,4 @@
+use crate::systems::CombatEvent;
 use crate::{
   game::player::PlayerComponent,
   systems::{
@@ -52,7 +53,8 @@ pub fn spawn_enemies(
           commands
             .spawn_bundle(SpriteSheetBundle {
               texture_atlas: def.texture_atlas.clone(),
-              transform: Transform::from_translation(Vec3::from((pos.clone(), crate::z::ENEMY))).with_scale(Vec3::splat(1.0)),
+              transform: Transform::from_translation(Vec3::from((pos.clone(), crate::z::ENEMY)))
+                .with_scale(Vec3::splat(1.0)),
               ..Default::default()
             })
             .insert(Combatant {
@@ -102,32 +104,46 @@ pub fn spawn_enemies(
 fn despawn_dead(
   mut commands: Commands,
   enemy_dic: Res<EnemyDictionary>,
-  qry: Query<(Entity, &Enemy, &Combatant, &Transform, &Velocity)>,
+  qry: Query<(&Enemy, &Transform, &Velocity)>,
+  qry_killer: Query<&Transform>,
+  mut evts: EventReader<CombatEvent>,
 ) {
-  for (entity, enemy, combatant, transform, v) in qry.iter() {
-    if combatant.hp <= 0.0 {
-      commands.entity(entity).despawn_recursive();
+  for evt in evts.iter() {
+    match evt {
+      CombatEvent::CombatantKilled(victim_entity, killer_entity) => {
+        commands.entity(*victim_entity).despawn_recursive();
+        if let Ok((enemy, transform, v)) = qry.get(*victim_entity) {
+          let velocity = if let Ok(killer_transform) = qry_killer.get(*killer_entity) {
+            Velocity::from_linear(
+              (transform.translation - killer_transform.translation).normalize() * 100.0,
+            )
+          } else {
+            v.clone()
+          };
 
-      if let Some(def) = enemy_dic.enemies.get(&enemy.enemy_type) {
-        commands
-          .spawn_bundle(SpriteSheetBundle {
-            texture_atlas: def.texture_atlas.clone(),
-            transform: transform.clone(),
-            ..Default::default()
-          })
-          .insert(def.death.clone())
-          .insert(RigidBody::Dynamic)
-          .insert(CollisionShape::Sphere { radius: 7. })
-          .insert(
-            CollisionLayers::none()
-              .with_group(PhysicsLayers::Corpses)
-              .with_mask(PhysicsLayers::AttackDead)
-              .with_mask(PhysicsLayers::World),
-          )
-          .insert(v.clone())
-          .insert(AtlasAnimation::default())
-          .insert(TimedLife::from_seconds(def.death.duration_seconds()));
+          if let Some(def) = enemy_dic.enemies.get(&enemy.enemy_type) {
+            commands
+              .spawn_bundle(SpriteSheetBundle {
+                texture_atlas: def.texture_atlas.clone(),
+                transform: transform.clone(),
+                ..Default::default()
+              })
+              .insert(def.death.clone())
+              .insert(RigidBody::Dynamic)
+              .insert(CollisionShape::Sphere { radius: 7. })
+              .insert(
+                CollisionLayers::none()
+                  .with_group(PhysicsLayers::Corpses)
+                  .with_mask(PhysicsLayers::AttackDead)
+                  .with_mask(PhysicsLayers::World),
+              )
+              .insert(velocity)
+              .insert(AtlasAnimation::default())
+              .insert(TimedLife::from_seconds(def.death.duration_seconds()));
+          }
+        }
       }
+      _ => {}
     }
   }
 }

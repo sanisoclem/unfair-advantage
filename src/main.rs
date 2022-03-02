@@ -4,6 +4,8 @@ use bevy::{
 };
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::{Inspectable, InspectorPlugin};
+use bevy_prototype_lyon::prelude::*;
+use bevy_editor_pls::prelude::*;
 
 mod game;
 mod menu;
@@ -27,7 +29,7 @@ fn main() {
       height: 1080.,
       ..Default::default()
     })
-    .insert_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
+    .insert_resource(ClearColor(Color::rgb(0.01, 0.01, 0.05)))
     .add_state(GameState::Game)
     .add_plugins(DefaultPlugins)
     .add_plugin(EguiPlugin)
@@ -38,6 +40,7 @@ fn main() {
     .add_plugin(systems::CombatPlugin)
     //.add_plugin(systems::DebugPlugin)
     //.add_plugin(InspectorPlugin::<Data>::new())
+    .add_plugin(ShapePlugin)
     .add_plugin(systems::PhysicsPlugin)
     .add_plugin(systems::MousePlugin)
     .add_plugin(systems::MovementPlugin)
@@ -45,6 +48,7 @@ fn main() {
     .add_plugin(splash::SplashPlugin)
     .add_plugin(menu::MenuPlugin)
     .add_plugin(game::GamePlugin)
+    .add_plugin(EditorPlugin)
     .add_startup_system(setup)
     .run();
 }

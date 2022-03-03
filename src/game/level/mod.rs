@@ -13,7 +13,7 @@ use std::{fmt::Debug, hash::Hash};
 use bevy_prototype_lyon::prelude::*;
 
 mod generator;
-mod maps2;
+pub mod maps2;
 
 #[derive(Clone, Eq, PartialEq, Debug, Hash)]
 pub enum LevelState {
@@ -26,6 +26,7 @@ pub enum LevelState {
 pub struct LevelTag;
 
 fn setup_test_level(
+  mut level: ResMut<maps2::Level>,
   mut commands: Commands,
   asset_server: Res<AssetServer>,
   mut player_state: ResMut<State<PlayerState>>,
@@ -38,7 +39,7 @@ fn setup_test_level(
 
   let layer_settings = LayerSettings::new(
     MapSize(1, 1),
-    ChunkSize(64, 64),
+    ChunkSize(48, 96),
     TileSize(16.0, 16.0),
     TextureSize(144.0, 128.0),
   );
@@ -48,7 +49,7 @@ fn setup_test_level(
   let (mut layer2_builder, layer_1_entity) =
     LayerBuilder::<TileBundle>::new(&mut commands, layer_settings.clone(), 0u16, 1u16);
 
-  let level = maps2::Level::generate_random(
+  *level = maps2::Level::generate_random(
     layer_settings.map_size.0 * layer_settings.chunk_size.0,
     layer_settings.map_size.1 * layer_settings.chunk_size.1,
   );
@@ -205,6 +206,7 @@ impl Plugin for LevelPlugin {
     app
       .add_plugin(TilemapPlugin)
       .add_state(LevelState::Disabled)
+      .insert_resource(maps2::Level::default())
       .add_system(set_texture_filters_to_nearest)
       .add_system_set(SystemSet::on_enter(LevelState::TestLevel).with_system(setup_test_level))
       .add_system_set(

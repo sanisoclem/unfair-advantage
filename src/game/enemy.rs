@@ -115,7 +115,7 @@ fn despawn_dead(
         if let Ok((enemy, transform, v)) = qry.get(*victim_entity) {
           let velocity = if let Ok(killer_transform) = qry_killer.get(*killer_entity) {
             Velocity::from_linear(
-              (transform.translation - killer_transform.translation).normalize() * 100.0,
+              (transform.translation - killer_transform.translation).normalize() * 700.0,
             )
           } else {
             v.clone()
@@ -153,7 +153,7 @@ fn chase_player(
 ) {
   if let Ok((_, transform)) = qry_player.get_single() {
     for (_, mut mov, t2) in qry.iter_mut() {
-      if (t2.translation - transform.translation).length() < 500. {
+      if (t2.translation - transform.translation).length() < 100. {
         mov.target = Some(transform.translation.xy());
       } else {
         mov.target = None;

@@ -32,7 +32,7 @@ pub enum WallType {
   Southwest,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Level {
   pub width: u32,
   pub height: u32,
@@ -40,6 +40,9 @@ pub struct Level {
   pub walls: Vec<Vec<WallType>>,
   pub rooms: Vec<Rect>,
   pub collission_shapes: Vec<Rect>,
+  pub spawn_points: Vec<Point>,
+  pub player_start_position: Point,
+  pub exit_point: Point,
 }
 
 impl Level {
@@ -71,6 +74,7 @@ impl Level {
     retval.place_corridors(&mut rng);
     retval.calculate_walls();
     retval.calculate_collission_shapes();
+    retval.calculate_spawn_points();
     retval
   }
   pub fn new(width: u32, height: u32) -> Self {
@@ -86,10 +90,10 @@ impl Level {
       height,
       walls,
       board,
-      rooms: Vec::new(),
-      collission_shapes: Vec::new(),
+      ..Default::default()
     }
   }
+
   pub fn place_rooms(&mut self, rng: &mut StdRng) {
     // configure room sizes
     let max_rooms = 20;
@@ -290,6 +294,12 @@ impl Level {
     }
     self.collission_shapes = rects;
   }
+
+  fn calculate_spawn_points(&mut self) {
+    self.rooms.sort_by_key(|r| r.centre.y);
+    self.exit_point = self.rooms[self.rooms.len() -1].centre;
+    self.player_start_position = self.rooms[0].centre;
+  }
 }
 
 fn merge_rects(rects: &mut Vec<Rect>) {
@@ -312,7 +322,7 @@ fn merge_rects(rects: &mut Vec<Rect>) {
   rects.retain(|r| !r.merged);
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Point {
   pub x: i32,
   pub y: i32,

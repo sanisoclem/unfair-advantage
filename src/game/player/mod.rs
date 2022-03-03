@@ -39,7 +39,7 @@ pub struct PlayerSpells {
   pub player_state_version: u32,
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum PlayerState {
   Despawned,
   Active,
@@ -95,6 +95,7 @@ impl From<&PlayerStateMachine> for PlayerAnimationState {
 }
 
 fn spawn_player(
+  level: Res<super::level::maps2::Level>,
   mut commands: Commands,
   asset_server: Res<AssetServer>,
   mut texture_atlases: ResMut<Assets<TextureAtlas>>,
@@ -110,8 +111,8 @@ fn spawn_player(
     .spawn_bundle(SpriteSheetBundle {
       texture_atlas: texture_atlas_handle.clone(),
       transform: Transform::from_scale(Vec3::splat(0.25)).with_translation(Vec3::new(
-        0.0,
-        0.0,
+        level.player_start_position.x as f32 * 16.0, // hax
+        level.player_start_position.y as f32 * 16.0,
         crate::z::PLAYER,
       )),
       ..Default::default()

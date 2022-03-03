@@ -32,11 +32,23 @@ fn camera_system(
   }
 }
 
+fn camera_system_initial_focus(
+  mut qry: Query<(&MainCamera, &mut Transform)>,
+  qry_target: Query<(Without<MainCamera>, &CameraTarget, &Transform), Added<CameraTarget>>,
+) {
+  if let Ok((_, _, target_transform)) = qry_target.get_single() {
+    for (_, mut cam_transform) in qry.iter_mut() {
+      cam_transform.translation = target_transform.translation.clone();
+    }
+  }
+}
+
 #[derive(Component)]
 pub struct TopDownCameraPlugin;
 
 impl Plugin for TopDownCameraPlugin {
   fn build(&self, app: &mut App) {
-    app.add_startup_system(setup).add_system(camera_system);
+    app.add_startup_system(setup).add_system(camera_system)
+    .add_system(camera_system_initial_focus);
   }
 }

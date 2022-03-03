@@ -1,8 +1,8 @@
-use crate::systems::Movement;
 use super::{
   enemy::{EnemyCommand, EnemyType},
   player::PlayerState,
 };
+use crate::systems::Movement;
 use crate::systems::{cleanup_system, PhysicsLayers};
 use bevy::math::Vec3Swizzles;
 use bevy::{prelude::*, render::render_resource::TextureUsages};
@@ -37,45 +37,120 @@ fn setup_test_level(
   let mut map = Map::new(0u16, map_entity);
 
   let layer_settings = LayerSettings::new(
-      MapSize(1, 1),
-      ChunkSize(64, 64),
-      TileSize(16.0, 16.0),
-      TextureSize(144.0, 128.0),
+    MapSize(1, 1),
+    ChunkSize(64, 64),
+    TileSize(16.0, 16.0),
+    TextureSize(144.0, 128.0),
   );
 
-  let (mut layer_builder, layer_0_entity) =
+  let (mut layer1_builder, layer_0_entity) =
     LayerBuilder::<TileBundle>::new(&mut commands, layer_settings.clone(), 0u16, 0u16);
+  let (mut layer2_builder, layer_1_entity) =
+    LayerBuilder::<TileBundle>::new(&mut commands, layer_settings.clone(), 0u16, 1u16);
 
-  let level = maps2::Level::generate_random(layer_settings.map_size.0 * layer_settings.chunk_size.0, layer_settings.map_size.1 * layer_settings.chunk_size.1);
-
+  let level = maps2::Level::generate_random(
+    layer_settings.map_size.0 * layer_settings.chunk_size.0,
+    layer_settings.map_size.1 * layer_settings.chunk_size.1,
+  );
 
   for x in 0..level.width {
     for y in 0..level.height {
       let position = TilePos(x, y);
-      let tile_index = match level.get(x, y) {
+      let tile_index = match level.get(x as i32, y as i32) {
         maps2::TileType::Floor => Some(23),
-        maps2::TileType::Wall => Some(48),
         maps2::TileType::Nothing => None,
+      };
+      let wall_index = match level.get_wall(x as i32, y as i32) {
+        maps2::WallType::North => Some(56),
+        maps2::WallType::South => Some(65),
+        maps2::WallType::East => Some(49),
+        maps2::WallType::EastInnerCorner => Some(58),
+        maps2::WallType::West => Some(48),
+        maps2::WallType::WestInnerCorner => Some(57),
+        maps2::WallType::Northeast => Some(59),
+        maps2::WallType::Northwest => Some(55),
+        maps2::WallType::Southeast => Some(68),
+        maps2::WallType::Southwest => Some(64),
+        maps2::WallType::Nothing => None,
       };
 
       match tile_index {
         Some(tile_index) => {
           //info!("found tile {:?}: {:?}", position, tile_index);
-          layer_builder.set_tile(
-            position,
-            Tile {
+          layer1_builder
+            .set_tile(
+              position,
+              Tile {
                 texture_index: tile_index,
                 ..Default::default()
-            }
-            .into()).expect("should succeed");
+              }
+              .into(),
+            )
+            .expect("should succeed");
+        }
+        None => {
+          layer1_builder
+            .set_tile(
+              position,
+              Tile {
+                texture_index: 23,
+                ..Default::default()
+              }
+              .into(),
+            )
+            .expect("should succeed");
+        }
+      }
+      match wall_index {
+        Some(wall_index) => {
+          //info!("found tile {:?}: {:?}", position, tile_index);
+          layer2_builder
+            .set_tile(
+              position,
+              Tile {
+                texture_index: wall_index,
+                ..Default::default()
+              }
+              .into(),
+            )
+            .expect("should succeed");
         }
         None => {}
       }
     }
   }
 
-  map_query.build_layer(&mut commands, layer_builder, texture_handle);
+  info!("rects: {:?}", level.collission_shapes);
+  for rect in level.collission_shapes.iter() {
+    commands
+      .spawn()
+      .insert(Transform::from_translation(Vec3::new(
+        rect.x as f32 * layer_settings.tile_size.0 + layer_settings.tile_size.0 * (rect.width as f32/2.),
+        rect.y as f32 * layer_settings.tile_size.1 + layer_settings.tile_size.1 * ((rect.height as f32/2.)),
+        crate::z::WALLS,
+      )))
+      .insert(GlobalTransform::default())
+      .insert(RigidBody::Static)
+      .insert(CollisionShape::Cuboid {
+        half_extends: Vec3::new(
+          rect.width as f32 * layer_settings.tile_size.0 / 2.,
+          rect.height as f32 * layer_settings.tile_size.1 / 2.,
+          0.0,
+        ),
+        border_radius: Some(0.1),
+      })
+      .insert(
+        CollisionLayers::none()
+          .with_group(PhysicsLayers::World)
+          .with_mask(PhysicsLayers::Enemies)
+          .with_mask(PhysicsLayers::Player),
+      );
+  }
+
+  map_query.build_layer(&mut commands, layer1_builder, texture_handle.clone());
+  map_query.build_layer(&mut commands, layer2_builder, texture_handle);
   map.add_layer(&mut commands, 0u16, layer_0_entity);
+  map.add_layer(&mut commands, 1u16, layer_1_entity);
 
   commands
     .entity(map_entity)
@@ -154,44 +229,6 @@ pub struct LevelRoom {
   pub size: Vec2,
 }
 
-fn test(
-  time: Res<Time>,
-  mut qry: Query<(
-    &bevy_prototype_lyon::render::Shape,
-    &mut Transform,
-    &LevelRoom,
-  )>,
-) {
-  let neighbors = qry
-    .iter()
-    .map(|(_, t, r)| (t.translation.xy(), r.clone()))
-    .collect::<Vec<_>>();
-  for (_, mut transform, r1) in qry.iter_mut() {
-    let mut separation = Vec2::new(0., 0.);
-    let mut cohesion = Vec2::new(0., 0.);
-    let t1 = transform.translation.xy();
-    let mut neighbor_count = 0;
-
-    for (t2, r2) in neighbors.iter() {
-      let diff = *t2 - t1;
-      let min_dist = (r1.size + r2.size).length();
-      if &t1 == t2 {
-        continue;
-      }
-      separation += *t2 - t1;
-      cohesion += *t2;
-      neighbor_count += 1;
-    }
-    if (neighbor_count > 0) {
-      cohesion = ((cohesion / neighbor_count as f32) - t1).normalize_or_zero();
-      separation = (separation * -1. / neighbor_count as f32).normalize_or_zero();
-      let s3 = Vec3::from((cohesion * 0.9 + separation, 0.));
-      //transform.translation += s3 * time.delta_seconds() * 100.;
-    }
-
-    //info!("transform {:?}", s3);
-  }
-}
 
 fn teardown_level(mut player_state: ResMut<State<PlayerState>>) {
   player_state
@@ -224,7 +261,6 @@ impl Plugin for LevelPlugin {
       .add_plugin(TilemapPlugin)
       .add_state(LevelState::Disabled)
       .add_system(set_texture_filters_to_nearest)
-      .add_system(test)
       .add_system_set(SystemSet::on_enter(LevelState::TestLevel).with_system(setup_test_level))
       .add_system_set(
         SystemSet::on_exit(LevelState::TestLevel)

@@ -40,7 +40,7 @@ fn main() {
     .add_plugin(systems::CombatPlugin)
     //.add_plugin(systems::DebugPlugin)
     //.add_plugin(InspectorPlugin::<Data>::new())
-    .add_plugin(ShapePlugin)
+    //.add_plugin(ShapePlugin)
     .add_plugin(systems::PhysicsPlugin)
     .add_plugin(systems::MousePlugin)
     .add_plugin(systems::MovementPlugin)

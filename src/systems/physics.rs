@@ -27,10 +27,10 @@ fn log_collisions(mut events: EventReader<CollisionEvent>) {
   for event in events.iter() {
     match event {
       CollisionEvent::Started(d1, d2) => {
-        // println!("Collision started between {:?} and {:?}", d1, d2)
+         //println!("Collision started between {:?} and {:?}", d1, d2)
       }
       CollisionEvent::Stopped(d1, d2) => {
-        // println!("Collision stopped between {:?} and {:?}", d1, d2)
+         //println!("Collision stopped between {:?} and {:?}", d1, d2)
       }
     }
   }

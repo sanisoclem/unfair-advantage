@@ -1867,7 +1867,6 @@ dependencies = [
  "bevy",
  "cfg_aliases",
  "heron_core",
- "heron_debug",
  "heron_macros",
  "heron_rapier",
 ]
@@ -1882,20 +1881,6 @@ dependencies = [
  "cfg_aliases",
  "duplicate",
  "smallvec",
-]
-
-[[package]]
-name = "heron_debug"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8c3c38972fedb335d45235508722cac717038f81f391d6f069a42c4e61e89f9"
-dependencies = [
- "bevy",
- "bevy_prototype_lyon",
- "fnv",
- "heron_core",
- "heron_rapier",
- "lyon_path",
 ]
 
 [[package]]

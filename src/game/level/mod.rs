@@ -88,18 +88,7 @@ fn setup_test_level(
             )
             .expect("should succeed");
         }
-        None => {
-          layer1_builder
-            .set_tile(
-              position,
-              Tile {
-                texture_index: 23,
-                ..Default::default()
-              }
-              .into(),
-            )
-            .expect("should succeed");
-        }
+        None => {}
       }
       match wall_index {
         Some(wall_index) => {
@@ -120,31 +109,24 @@ fn setup_test_level(
     }
   }
 
-  info!("rects: {:?}", level.collission_shapes);
   for rect in level.collission_shapes.iter() {
     commands
       .spawn()
       .insert(Transform::from_translation(Vec3::new(
-        rect.x as f32 * layer_settings.tile_size.0 + layer_settings.tile_size.0 * (rect.width as f32/2.),
-        rect.y as f32 * layer_settings.tile_size.1 + layer_settings.tile_size.1 * ((rect.height as f32/2.)),
+        (rect.x as f32 * layer_settings.tile_size.0 + layer_settings.tile_size.0 * (rect.width as f32/2.)) / 3.,
+        (rect.y as f32 * layer_settings.tile_size.1 + layer_settings.tile_size.1 * ((rect.height as f32/2.))) / 3.,
         crate::z::WALLS,
       )))
       .insert(GlobalTransform::default())
       .insert(RigidBody::Static)
       .insert(CollisionShape::Cuboid {
         half_extends: Vec3::new(
-          rect.width as f32 * layer_settings.tile_size.0 / 2.,
-          rect.height as f32 * layer_settings.tile_size.1 / 2.,
+          rect.width as f32 * layer_settings.tile_size.0 / 6.,
+          rect.height as f32 * layer_settings.tile_size.1 / 6.,
           0.0,
         ),
         border_radius: Some(0.1),
-      })
-      .insert(
-        CollisionLayers::none()
-          .with_group(PhysicsLayers::World)
-          .with_mask(PhysicsLayers::Enemies)
-          .with_mask(PhysicsLayers::Player),
-      );
+      });
   }
 
   map_query.build_layer(&mut commands, layer1_builder, texture_handle.clone());
@@ -162,66 +144,29 @@ fn setup_test_level(
     .set(PlayerState::Active)
     .expect("set player state should always succeed");
 
-  // for i in 20..44 {
-  //   let r = 10;
-  //   let sz = 16.;
-  //   let pos = Vec2::new(((i % r) - r / 2) as f32, (i / r) as f32);
-  //   enemy_cmd.send(EnemyCommand::Spawn(EnemyType::Slime, pos * sz));
-  // }
+  for i in 20..44 {
+    let r = 10;
+    let sz = 16.;
+    let pos = Vec2::new(((i % r) - r / 2) as f32, (i / r) as f32);
+    enemy_cmd.send(EnemyCommand::Spawn(EnemyType::Slime, pos * sz));
+  }
 
-  // for i in 20..200 {
-  //   let r = 10;
-  //   let sz = 16.;
-  //   let pos = Vec2::new(((i % r) - r / 2 - 11) as f32, (i / r) as f32);
-  //   enemy_cmd.send(EnemyCommand::Spawn(EnemyType::Goblin, pos * sz));
-  // }
+  for i in 20..200 {
+    let r = 10;
+    let sz = 16.;
+    let pos = Vec2::new(((i % r) - r / 2 - 11) as f32, (i / r) as f32);
+    enemy_cmd.send(EnemyCommand::Spawn(EnemyType::Goblin, pos * sz));
+  }
 
-  // for i in 20..200 {
-  //   let r = 10;
-  //   let sz = 16.;
-  //   let pos = Vec2::new(((i % r) - r / 2 + 11) as f32, (i / r) as f32);
-  //   enemy_cmd.send(EnemyCommand::Spawn(EnemyType::Goblin, pos * sz));
-  // }
+  for i in 20..200 {
+    let r = 10;
+    let sz = 16.;
+    let pos = Vec2::new(((i % r) - r / 2 + 11) as f32, (i / r) as f32);
+    enemy_cmd.send(EnemyCommand::Spawn(EnemyType::Goblin, pos * sz));
+  }
 
   // enemy_cmd.send(EnemyCommand::Spawn(EnemyType::Boss, Vec2::new(0., -300.)));
 
-  // for (p1, p2) in generator::generate_rooms() {
-  //   let scale = 500.;
-  //   let p1s = p1 * scale;
-  //   let p2s = p2 * scale;
-
-  //   let shape = shapes::Rectangle {
-  //     extents: p2s,
-  //     origin: RectangleOrigin::Center,
-  //   };
-
-  //   commands
-  //     .spawn_bundle(GeometryBuilder::build_as(
-  //       &shape,
-  //       DrawMode::Outlined {
-  //         fill_mode: FillMode::color(Color::CYAN),
-  //         outline_mode: StrokeMode::new(Color::BLACK, 10.0),
-  //       },
-  //       Transform::from_translation(Vec3::from((p1s, 30.))),
-  //     ))
-  //     .insert(RotationConstraints::lock())
-  //     .insert(RigidBody::Dynamic)
-  //     .insert(
-  //       CollisionLayers::none()
-  //         .with_group(PhysicsLayers::Enemies)
-  //         .with_mask(PhysicsLayers::Enemies),
-  //     )
-  //     .insert(Movement {
-  //       target: Some(Vec2::new(0., 0.)),
-  //       speed: 50.,
-  //       enabled: true
-  //     })
-  //     .insert(CollisionShape::Cuboid {
-  //       half_extends: Vec3::new(p2s.x / 2., p2s.y / 2., 0.),
-  //       border_radius: None,
-  //     })
-  //     .insert(LevelRoom { size: p2s });
-  // }
 }
 
 #[derive(Component, Clone)]

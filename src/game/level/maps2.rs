@@ -44,7 +44,6 @@ pub struct Level {
 
 impl Level {
   pub fn generate(seed: &str, width: u32, height: u32) -> Self {
-    info!("Generating level with seed: {}", seed);
     let mut retval = Self::new(width, height);
     let hash = create_hash(seed);
 
@@ -131,7 +130,6 @@ impl Level {
 
       // if the new room doesn't collide, add it to the level
       if !collides {
-        info!("Room added {:?}", room);
         self.add_room(&room);
       }
     }
@@ -275,10 +273,16 @@ impl Level {
           .iter()
           .flat_map(|ys| ys.iter().map(move |t| t.clone())),
       )
-      .filter_map(|((x, y, t), w)| match (t, w) {
-        (TileType::Nothing, _) => Some(Rect::new(x as i32, y as i32, 1, 1)),
-        _ => None,
+      .flat_map(|((x, y, t), w)| match (t, w) {
+        (TileType::Nothing, _) => vec![Some(Rect::new(x as i32 * 3, y as i32 *3, 3, 3))],
+        (_, WallType::West) | (_, WallType::WestInnerCorner) => vec![Some(Rect::new(x as i32 * 3, y as i32 *3, 1, 3))],
+        (_, WallType::East) | (_, WallType::EastInnerCorner) => vec![Some(Rect::new(x as i32 * 3 + 2, y as i32 *3, 1, 3))],
+        (_, WallType::South) => vec![Some(Rect::new(x as i32 * 3 , y as i32 *3, 3, 1))],
+        (_, WallType::Southeast) => vec![Some(Rect::new(x as i32 * 3 , y as i32 *3, 3, 1)), Some(Rect::new(x as i32 * 3 + 2, y as i32 * 3 + 1, 1, 2))],
+        (_, WallType::Southwest) => vec![Some(Rect::new(x as i32 * 3 , y as i32 *3, 3, 1)), Some(Rect::new(x as i32 * 3, y as i32 * 3 + 1, 1, 2))],
+        _ => vec![None],
       })
+      .filter_map(|i|i)
       .collect::<Vec<_>>();
 
     for _ in 0..10 {
@@ -300,9 +304,7 @@ fn merge_rects(rects: &mut Vec<Rect>) {
       if rects[i].can_merge(&rects[j]) {
         rects[j].merged = true;
         let other = rects[j].clone();
-        info!("merging {:?} and {:?}", rects[i], other);
         rects[i].merge(&other);
-        info!("merged to {:?}", rects[i]);
         break;
       }
     }

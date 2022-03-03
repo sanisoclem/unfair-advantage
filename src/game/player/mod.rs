@@ -155,13 +155,14 @@ fn spawn_player(
       ..Default::default()
     })
     // physics
-    .insert(RigidBody::KinematicPositionBased)
+    .insert(RigidBody::Dynamic)
     .insert(PhysicMaterial {
       friction: 1.0,
-      density: 1.,
+      density: 10000.,
       ..Default::default()
     })
     .insert(RotationConstraints::lock())
+    .insert(CollisionShape::Sphere { radius: 10. })
     .insert(
       CollisionLayers::none()
         .with_group(PhysicsLayers::Player)

@@ -156,7 +156,7 @@ fn spawn_player(
       ..Default::default()
     })
     // physics
-    .insert(RigidBody::Dynamic)
+    .insert(RigidBody::KinematicPositionBased)
     .insert(PhysicMaterial {
       friction: 1.0,
       density: 10000.,

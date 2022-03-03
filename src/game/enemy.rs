@@ -130,6 +130,10 @@ fn despawn_dead(
               })
               .insert(def.death.clone())
               .insert(RigidBody::Dynamic)
+              .insert(PhysicMaterial {
+                restitution: 0.4,
+                ..Default::default()
+              })
               .insert(CollisionShape::Sphere { radius: 7. })
               .insert(
                 CollisionLayers::none()

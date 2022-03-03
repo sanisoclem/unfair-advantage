@@ -386,7 +386,7 @@ impl Plugin for CombatPlugin {
       .add_startup_system(setup)
       .add_system(show_damage)
       .add_system(spawn_spell_stuff)
-      .add_system(find_victims)
-      .add_system(damage_victims);
+      .add_system(find_victims.label("find_victims"))
+      .add_system(damage_victims.label("damage_victims").after("find_victims"));
   }
 }

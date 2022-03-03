@@ -145,29 +145,14 @@ fn setup_test_level(
     .set(PlayerState::Active)
     .expect("set player state should always succeed");
 
-  for i in 20..44 {
-    let r = 10;
-    let sz = 16.;
-    let pos = Vec2::new(((i % r) - r / 2) as f32, (i / r) as f32);
-    enemy_cmd.send(EnemyCommand::Spawn(EnemyType::Slime, pos * sz));
+  for p in level.spawn_points.iter() {
+    if p.x % 2 == 0 {
+      enemy_cmd.send(EnemyCommand::Spawn(EnemyType::Slime, Vec2::new(p.x as f32 * 16., p.y as f32 * 16.)));
+    } else {
+      enemy_cmd.send(EnemyCommand::Spawn(EnemyType::Goblin, Vec2::new(p.x as f32 * 16., p.y as f32 * 16.)));
+    }
   }
-
-  for i in 20..200 {
-    let r = 10;
-    let sz = 16.;
-    let pos = Vec2::new(((i % r) - r / 2 - 11) as f32, (i / r) as f32);
-    enemy_cmd.send(EnemyCommand::Spawn(EnemyType::Goblin, pos * sz));
-  }
-
-  for i in 20..200 {
-    let r = 10;
-    let sz = 16.;
-    let pos = Vec2::new(((i % r) - r / 2 + 11) as f32, (i / r) as f32);
-    enemy_cmd.send(EnemyCommand::Spawn(EnemyType::Goblin, pos * sz));
-  }
-
   // enemy_cmd.send(EnemyCommand::Spawn(EnemyType::Boss, Vec2::new(0., -300.)));
-
 }
 
 #[derive(Component, Clone)]

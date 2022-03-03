@@ -38,7 +38,8 @@ fn camera_system_initial_focus(
 ) {
   if let Ok((_, _, target_transform)) = qry_target.get_single() {
     for (_, mut cam_transform) in qry.iter_mut() {
-      cam_transform.translation = target_transform.translation.clone();
+      cam_transform.translation.x = target_transform.translation.x;
+      cam_transform.translation.y = target_transform.translation.y;
     }
   }
 }

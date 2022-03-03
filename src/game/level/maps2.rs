@@ -74,7 +74,7 @@ impl Level {
     retval.place_corridors(&mut rng);
     retval.calculate_walls();
     retval.calculate_collission_shapes();
-    retval.calculate_spawn_points();
+    retval.calculate_spawn_points(&mut rng);
     retval
   }
   pub fn new(width: u32, height: u32) -> Self {
@@ -295,10 +295,22 @@ impl Level {
     self.collission_shapes = rects;
   }
 
-  fn calculate_spawn_points(&mut self) {
+  fn calculate_spawn_points(&mut self, rng: &mut StdRng) {
+    let min_dist = 1;
     self.rooms.sort_by_key(|r| r.centre.y);
     self.exit_point = self.rooms[self.rooms.len() -1].centre;
     self.player_start_position = self.rooms[0].centre;
+
+    for room in self.rooms.iter_mut() {
+      for i in 0..(room.area()/4) {
+        let x = rng.gen_range(room.x+1..room.x2-2);
+        let y = rng.gen_range(room.y+1..room.y2-2);
+        let p = Point{ x, y };
+
+        self.spawn_points.retain(|p2| (p2.x - p.x).abs() +(p2.y - p.y).abs()  > min_dist);
+        self.spawn_points.push(p);
+      }
+    }
   }
 }
 
@@ -322,7 +334,7 @@ fn merge_rects(rects: &mut Vec<Rect>) {
   rects.retain(|r| !r.merged);
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
 pub struct Point {
   pub x: i32,
   pub y: i32,
@@ -383,5 +395,9 @@ impl Rect {
       x: self.x + (self.width / 2),
       y: self.y + (self.height / 2),
     };
+  }
+  #[inline]
+  pub fn area(&self) -> i32 {
+    self.width * self.height
   }
 }

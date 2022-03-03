@@ -22,9 +22,9 @@ pub fn build_spells(
       damage_max: 1000.,
       dot: false,
       damage_tick: 0.0,
-      prepare_duration: 1.1667/2.,
-      cast_duration: 0.1667/2.,
-      recovery_duration: 0.6667/2.,
+      prepare_duration: 0.3,// 1.1667/2.,
+      cast_duration: 0.05, //0.1667/2.,
+      recovery_duration: 0.5, // 667/2.,
       prepare_sprite: Some(SpellSprite {
         texture_atlas: texture_atlas_handle.clone(),
         start_frame: 0,

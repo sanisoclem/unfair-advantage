@@ -1,11 +1,12 @@
 use bevy::{math::Vec3Swizzles, prelude::*};
 use heron::{PhysicMaterial, Velocity};
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct Movement {
   pub target: Option<Vec2>,
   pub speed: f32,
   pub enabled: bool,
+  pub path_backlog: Vec<Vec2>,
 }
 
 fn movement(time: Res<Time>, mut qry: Query<(&mut Movement, &mut Transform), Without<Velocity>>) {
@@ -21,7 +22,13 @@ fn movement(time: Res<Time>, mut qry: Query<(&mut Movement, &mut Transform), Wit
 
       if diff.length() <= factor {
         transform.translation = Vec3::from((target, z));
-        mov.target = None;
+
+        if mov.path_backlog.len() > 0 {
+          let next = mov.path_backlog.remove(0);
+          mov.target = Some(next);
+        } else {
+          mov.target = None;
+        }
       } else {
         transform.translation -= Vec3::from((diff, 0.)).normalize() * factor;
       }

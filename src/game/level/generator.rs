@@ -1,8 +1,11 @@
 use crate::utils::create_hash;
 use core::cmp::min;
+use pathfinding::prelude::{absdiff, astar};
 use rand::prelude::*;
 
 use std::cmp::max;
+
+const SQRT2: f32 = 1.4142135623730950488016887242097;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum TileType {
@@ -38,7 +41,7 @@ impl Default for WallType {
 }
 
 // TODO: separate builder/generator
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Level {
   pub width: u32,
   pub height: u32,
@@ -52,10 +55,11 @@ pub struct Level {
 
 #[derive(Default, Clone, Debug)]
 pub struct LevelTile {
+  pub position: Point,
   pub tile_type: TileType,
   pub wall_type: WallType,
   pub is_spawn_point: bool,
-  pub spawned: bool
+  pub spawned: bool,
 }
 
 impl Level {
@@ -92,6 +96,20 @@ impl Level {
   }
 
   pub fn new(width: u32, height: u32) -> Self {
+    let mut tiles = Vec::new();
+    for x in 0..width {
+      for y in 0..height {
+        let position = Point {
+          x: x as i32,
+          y: y as i32,
+        };
+        let tile = LevelTile {
+          position,
+          ..Default::default()
+        };
+        tiles.push(tile);
+      }
+    }
     let tiles = (0..width)
       .map(|_| vec![LevelTile::default(); height as usize])
       .collect();
@@ -288,8 +306,13 @@ impl Level {
         .map(move |(y, t)| (x as i32, y as i32, t))
     })
   }
+
   pub fn get_tile_mut(&mut self, x: i32, y: i32) -> &mut LevelTile {
     &mut self.tiles[x as usize][y as usize]
+  }
+
+  pub fn get_tile(&self, x: i32, y: i32) -> &LevelTile {
+    &self.tiles[x as usize][y as usize]
   }
 
   fn calculate_collission_shapes(&mut self) {
@@ -329,7 +352,7 @@ impl Level {
     let min_dist = 1;
     let num_rooms = self.rooms.len();
     self.rooms.sort_by_key(|r| r.centre.y);
-    self.exit_point = self.rooms[num_rooms- 1].centre;
+    self.exit_point = self.rooms[num_rooms - 1].centre;
     self.player_start_position = self.rooms[0].centre;
 
     for room in self.rooms.iter_mut().skip(1).take(num_rooms - 2) {
@@ -349,9 +372,76 @@ impl Level {
     self.set(self.exit_point.x, self.exit_point.y, TileType::Exit);
   }
 
-  // fn get_path(&self, from: Point, to: Point) {
+  fn get_neighbors(&self, pos: &Point) -> impl Iterator<Item = (Point, i32)> {
+    let x = pos.x;
+    let y = pos.y;
 
-  // }
+    let mut neighbors = Vec::new();
+    let mut s0 = false;
+    let mut s1 = false;
+    let mut s2 = false;
+    let mut s3 = false;
+    let d0;
+    let d1;
+    let d2;
+    let d3;
+
+    // ↑
+    if self.get(x, y - 1) != TileType::Nothing {
+      neighbors.push(Point { x, y: y - 1 });
+      s0 = true;
+    }
+    // →
+    if self.get(x + 1, y) != TileType::Nothing {
+      neighbors.push(Point { x: x + 1, y });
+      s1 = true;
+    }
+    // ↓
+    if self.get(x, y + 1) != TileType::Nothing {
+      neighbors.push(Point { x, y: y + 1 });
+      s2 = true;
+    }
+    // ←
+    if self.get(x - 1, y) != TileType::Nothing {
+      neighbors.push(Point { x: x - 1, y });
+      s3 = true;
+    }
+
+    d0 = s3 && s0;
+    d1 = s0 && s1;
+    d2 = s1 && s2;
+    d3 = s2 && s3;
+
+    // ↖
+    if d0 && self.get(x - 1, y - 1) != TileType::Nothing {
+      neighbors.push(Point { x: x - 1, y: y - 1 });
+    }
+    // ↗
+    if d1 && self.get(x + 1, y - 1) != TileType::Nothing {
+      neighbors.push(Point { x: x + 1, y: y - 1 });
+    }
+    // ↘
+    if d2 && self.get(x + 1, y + 1) != TileType::Nothing {
+      neighbors.push(Point { x: x + 1, y: y + 1 });
+    }
+    // ↙
+    if d3 && self.get(x - 1, y + 1) != TileType::Nothing {
+      neighbors.push(Point { x: x - 1, y: y + 1 });
+    }
+
+    return neighbors.into_iter().map(|p| (p, 1));
+  }
+
+  pub fn get_path(&self, from: Point, to: Point) -> Option<Vec<Point>> {
+    println!("Finding path from {:?} to {:?}", from, to);
+    dbg!(astar(
+      &from,
+      |p| self.get_neighbors(p),
+      |p| p.distance(&to) as i32 / 3,
+      |p| *p == to,
+    ).map(|(mut v, _)| {v.remove(0); v } ))
+  }
+
   // fn get_valid_destination(&self, from: Point, candidate: Point) -> Point {
 
   // }
@@ -377,10 +467,16 @@ fn merge_rects(rects: &mut Vec<Rect>) {
   rects.retain(|r| !r.merged);
 }
 
-#[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
+#[derive(Default, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Point {
   pub x: i32,
   pub y: i32,
+}
+
+impl Point {
+  fn distance(&self, other: &Self) -> u32 {
+    (absdiff(self.x, other.x) + absdiff(self.y, other.y)) as u32
+  }
 }
 
 #[derive(Clone, Debug)]

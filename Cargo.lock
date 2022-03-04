@@ -1867,6 +1867,7 @@ dependencies = [
  "bevy",
  "cfg_aliases",
  "heron_core",
+ "heron_debug",
  "heron_macros",
  "heron_rapier",
 ]
@@ -1881,6 +1882,20 @@ dependencies = [
  "cfg_aliases",
  "duplicate",
  "smallvec",
+]
+
+[[package]]
+name = "heron_debug"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8c3c38972fedb335d45235508722cac717038f81f391d6f069a42c4e61e89f9"
+dependencies = [
+ "bevy",
+ "bevy_prototype_lyon",
+ "fnv",
+ "heron_core",
+ "heron_rapier",
+ "lyon_path",
 ]
 
 [[package]]
@@ -2003,6 +2018,15 @@ dependencies = [
  "js-sys",
  "wasm-bindgen",
  "web-sys",
+]
+
+[[package]]
+name = "integer-sqrt"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "276ec31bcb4a9ee45f58bec6f9ec700ae4cf4f4f8f2fa7e06cb406bd5ffdd770"
+dependencies = [
+ "num-traits",
 ]
 
 [[package]]
@@ -2776,6 +2800,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0744126afe1a6dd7f394cb50a716dbe086cb06e255e53d8d0185d82828358fb5"
 
 [[package]]
+name = "pathfinding"
+version = "3.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae0f81e2934f5e80cf0fa7a3ee971b9b37df69ac111f20772e4dd33ff379d740"
+dependencies = [
+ "fixedbitset",
+ "indexmap",
+ "integer-sqrt",
+ "itertools",
+ "num-traits",
+ "rustc-hash",
+ "thiserror",
+]
+
+[[package]]
 name = "peeking_take_while"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3501,6 +3540,7 @@ dependencies = [
  "bevy_egui",
  "bevy_prototype_lyon",
  "heron",
+ "pathfinding",
  "rand",
  "sha2",
 ]

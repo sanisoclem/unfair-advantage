@@ -1,4 +1,5 @@
 use super::{LevelState, LevelTag};
+use crate::game::level::generator::Point;
 use crate::systems::{
   AtlasAnimation, CombatAction, Combatant, Immortal, SimpleDirection, SpellType, Spellbook,
   TopDownCharacter,
@@ -41,6 +42,7 @@ pub struct PlayerSpells {
 
 pub enum PlayerCommand {
   Stop,
+  MovePath(Vec<Vec2>),
   Move(Vec2),
   Dash(Vec2),
   PrepareSpell(SpellType, Vec2),
@@ -52,6 +54,7 @@ pub enum PlayerCommand {
 pub enum PlayerStateMachine {
   Idle,
   Running(Vec2),
+  RunningPath(Vec<Vec2>),
   Dashing(Vec2),
   PreparingSpell(SpellType, Vec2),
   CastingSpell(SpellType, Vec2),
@@ -79,6 +82,7 @@ impl From<&PlayerStateMachine> for PlayerAnimationState {
     match state {
       PlayerStateMachine::Idle => PlayerAnimationState::Idle,
       PlayerStateMachine::Running(_) => PlayerAnimationState::Running,
+      PlayerStateMachine::RunningPath(_) => PlayerAnimationState::Running,
       PlayerStateMachine::Dashing(_) => PlayerAnimationState::Dashing,
       PlayerStateMachine::PreparingSpell(_, _) => PlayerAnimationState::PreparingSpell,
       PlayerStateMachine::CastingSpell(_, _) => PlayerAnimationState::CastingSpell,
@@ -140,6 +144,7 @@ fn spawn_player(
       speed: 150.0,
       enabled: true,
       target: None,
+      ..Default::default()
     })
     // we can dash
     .insert(PlayerDash {
@@ -156,20 +161,14 @@ fn spawn_player(
       ..Default::default()
     })
     .insert(RotationConstraints::lock())
-    .insert(CollisionShape::Sphere { radius: 10. })
+    .insert(CollisionShape::Sphere { radius: 7. })
     .insert(
       CollisionLayers::none()
         .with_group(PhysicsLayers::Player)
         .with_mask(PhysicsLayers::Enemies)
         .with_mask(PhysicsLayers::World)
         .with_mask(PhysicsLayers::Exit),
-    )
-    .with_children(|builder| {
-      builder
-        .spawn()
-        .insert(Transform::from_translation(Vec3::new(0.0, -10.0, 0.0)));
-      //.insert(CollisionShape::Sphere { radius: 10. });
-    });
+    );
 }
 
 fn read_input(
@@ -177,36 +176,53 @@ fn read_input(
   mouse_info: Res<MouseInfo>,
   keyboard_input: Res<Input<KeyCode>>,
   physics_world: PhysicsWorld,
+  level: Res<super::generator::Level>,
   mut evts: EventWriter<PlayerCommand>,
   mut qry: Query<(&PlayerComponent, &Transform, &CollisionShape)>,
 ) {
   if let Ok((_player, transform, shape)) = qry.get_single_mut() {
     let player_pos = transform.translation.xy();
     if mouse_button_input.just_pressed(MouseButton::Left) {
-      let result = physics_world.shape_cast_with_filter(
-        &shape,
-        Vec3::from((transform.translation.xy(), 0.)),
-        Quat::IDENTITY,
-        mouse_info.world_pos3 - Vec3::from((transform.translation.xy(), 0.)),
-        CollisionLayers::none()
-          .with_group(PhysicsLayers::MovementSensor)
-          .with_mask(PhysicsLayers::World),
-        |_| true,
-      );
-
-      let pos = match result {
-        Some(hit) => match hit.collision_type {
-          ShapeCastCollisionType::Collided(info) => Some(
-            (info.self_end_position.xy() - transform.translation.xy()) * 0.9
-              + transform.translation.xy()
-          ),
-          _ => None,
-        },
-        None => Some(mouse_info.world_pos2),
+      let from = Point {
+        x: player_pos.x as i32 / 16,
+        y: player_pos.y as i32 / 16,
+      };
+      let to = Point {
+        x: mouse_info.world_pos2.x as i32 / 16,
+        y: mouse_info.world_pos2.y as i32 / 16,
       };
 
-      if let Some(target_pos) = pos {
-        evts.send(PlayerCommand::Move(target_pos));
+      if let Some(route) = level.get_path(from, to) {
+        evts.send(PlayerCommand::MovePath(
+          route
+            .into_iter()
+            .map(|p| Vec2::new(p.x as f32 * 16.0, p.y as f32 * 16.0))
+            .collect(),
+        ));
+      } else {
+        let result = physics_world.shape_cast_with_filter(
+          &shape,
+          Vec3::from((transform.translation.xy(), 0.)),
+          Quat::IDENTITY,
+          mouse_info.world_pos3 - Vec3::from((transform.translation.xy(), 0.)),
+          CollisionLayers::none()
+            .with_group(PhysicsLayers::MovementSensor)
+            .with_mask(PhysicsLayers::World),
+          |_| true,
+        );
+        let pos = match result {
+          Some(hit) => match hit.collision_type {
+            ShapeCastCollisionType::Collided(info) => Some(
+              (info.self_end_position.xy() - transform.translation.xy()) * 0.9
+                + transform.translation.xy(),
+            ),
+            _ => None,
+          },
+          None => Some(mouse_info.world_pos2),
+        };
+        if let Some(target_pos) = pos {
+          evts.send(PlayerCommand::Move(target_pos));
+        }
       }
     }
     if mouse_button_input.just_pressed(MouseButton::Right) {
@@ -240,13 +256,26 @@ fn update_state(
           character.state = PlayerAnimationState::Idle;
           player.version += 1;
         }
-        (PlayerCommand::Move(dir), PlayerStateMachine::Running(_))
+        (PlayerCommand::Move(dir), PlayerStateMachine::RunningPath(_))
+        | (PlayerCommand::Move(dir), PlayerStateMachine::Running(_))
         | (PlayerCommand::Move(dir), PlayerStateMachine::Idle)
         | (PlayerCommand::Move(dir), PlayerStateMachine::RecoveringFromSpell(_, _))
         | (PlayerCommand::Move(dir), PlayerStateMachine::PreparingSpell(_, _)) => {
           player.state = PlayerStateMachine::Running(dir.clone());
           character.state = PlayerAnimationState::Running;
           character.direction_vec = (dir.clone() - transform.translation.xy()).normalize();
+          player.version += 1;
+        }
+        (PlayerCommand::MovePath(path), PlayerStateMachine::Running(_))
+        | (PlayerCommand::MovePath(path), PlayerStateMachine::RunningPath(_))
+        | (PlayerCommand::MovePath(path), PlayerStateMachine::Idle)
+        | (PlayerCommand::MovePath(path), PlayerStateMachine::RecoveringFromSpell(_, _))
+        | (PlayerCommand::MovePath(path), PlayerStateMachine::PreparingSpell(_, _)) => {
+          let paths = path.clone();
+          let first_path = paths[0].clone();
+          player.state = PlayerStateMachine::RunningPath(paths);
+          character.state = PlayerAnimationState::Running;
+          character.direction_vec = (first_path.clone() - transform.translation.xy()).normalize();
           player.version += 1;
         }
         (PlayerCommand::Dash(dir), _) => {
@@ -259,6 +288,7 @@ fn update_state(
         }
 
         (PlayerCommand::PrepareSpell(spell_type, dir), PlayerStateMachine::Running(_))
+        | (PlayerCommand::PrepareSpell(spell_type, dir), PlayerStateMachine::RunningPath(_))
         | (PlayerCommand::PrepareSpell(spell_type, dir), PlayerStateMachine::Idle) => {
           player.state = PlayerStateMachine::PreparingSpell(*spell_type, dir.clone());
           character.state = PlayerAnimationState::PreparingSpell;
@@ -369,8 +399,25 @@ fn move_player(mut qry: Query<(&PlayerComponent, &mut Movement), Changed<PlayerC
   for (player, mut mov) in &mut qry.iter_mut() {
     if let PlayerStateMachine::Running(target) = player.state {
       mov.target = Some(target);
+    } else if let PlayerStateMachine::RunningPath(path) = &player.state {
+      let mut paths = path.clone();
+      let first_waypoint = paths.remove(0);
+      mov.target = Some(first_waypoint);
+      mov.path_backlog = paths;
     } else {
       mov.target = None;
+      mov.path_backlog.clear();
+    }
+  }
+}
+
+fn move_update_player(mut qry: Query<(&PlayerComponent, &mut TopDownCharacter<PlayerAnimationState>, &Movement, &Transform), Changed<Movement>>) {
+  for (player, mut character, mov, transform) in &mut qry.iter_mut() {
+    if let PlayerStateMachine::RunningPath(_) = player.state {
+      if let Some(target) = mov.target {
+        let dir = (target - transform.translation.xy()).normalize();
+        character.direction_vec = dir;
+      }
     }
   }
 }

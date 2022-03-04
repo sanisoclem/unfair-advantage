@@ -18,6 +18,7 @@ pub fn setup_camera(mut commands: Commands) {
       speed: 600.0,
       enabled: true,
       target: None,
+      ..Default::default()
     });
 }
 

@@ -42,8 +42,6 @@ pub fn spawn_enemies(
   timer.timer.tick(time.delta());
   if !timer.timer.just_finished() { return }
 
-  info!("spawn time");
-
   if let Ok(player_transform) = qry.get_single() {
     let mut rng = rand::thread_rng();
     for (x, y, mut tile) in level.get_tiles_mut() {
@@ -54,7 +52,7 @@ pub fn spawn_enemies(
       {
         continue;
       }
-      info!("spawn in {:?}", pos);
+
       let enemy_type = match rng.gen_range(0..10u8) {
         0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 => EnemyType::Slime,
         _ => EnemyType::Goblin,
@@ -106,6 +104,7 @@ pub fn spawn_enemies(
           speed: 100.0,
           enabled: true,
           target: None,
+          ..Default::default()
         })
         .insert(Velocity::from(Vec3::splat(0.0)));
     }

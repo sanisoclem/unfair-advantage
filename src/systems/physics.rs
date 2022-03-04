@@ -3,13 +3,13 @@ use heron::prelude::*;
 
 #[derive(PhysicsLayer)]
 pub enum PhysicsLayers {
-  World,
+  World, // walls
   Player,
   Enemies,
-  Attacks,
-  AttackDead,
-  Corpses,
+  Attacks, // sensor used for attacks, projectiles
+  Corpses, // dead enemies that are flung around
   MovementSensor,
+  Exit // exit tile
 }
 
 #[derive(Component)]

@@ -122,7 +122,7 @@ fn main_menu_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
           ..Default::default()
         },
         text: Text::with_section(
-          "Main Menu UI",
+          "Slime Horde",
           TextStyle {
             font: font.clone(),
             font_size: 80.0,

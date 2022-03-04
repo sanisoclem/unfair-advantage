@@ -13,7 +13,6 @@ pub fn setup_camera(mut commands: Commands) {
 
   commands
     .spawn_bundle(cam_bundle)
-    .insert(super::LevelTag)
     .insert(MainCamera)
     .insert(Movement {
       speed: 600.0,

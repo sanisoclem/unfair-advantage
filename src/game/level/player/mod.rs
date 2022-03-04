@@ -161,7 +161,8 @@ fn spawn_player(
       CollisionLayers::none()
         .with_group(PhysicsLayers::Player)
         .with_mask(PhysicsLayers::Enemies)
-        .with_mask(PhysicsLayers::World),
+        .with_mask(PhysicsLayers::World)
+        .with_mask(PhysicsLayers::Exit),
     )
     .with_children(|builder| {
       builder

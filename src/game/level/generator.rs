@@ -69,6 +69,7 @@ impl Level {
     retval
   }
 
+  // the procedural generation is not very good, so no point in exposing this function
   pub fn generate_seed_str(seed: &str, width: u32, height: u32) -> Self {
     let hash = create_hash(seed);
     let seed_bytes = hash

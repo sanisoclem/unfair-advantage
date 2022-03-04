@@ -3,6 +3,7 @@ use super::{
   settings::LevelSettings,
   LevelLoader, LevelState, LevelTag,
 };
+use crate::systems::PhysicsLayers;
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 use heron::prelude::*;
@@ -102,6 +103,14 @@ pub fn generate_level(
       .insert(LevelTag)
       .insert(GlobalTransform::default())
       .insert(RigidBody::Static)
+      .insert(
+        CollisionLayers::none()
+          .with_group(PhysicsLayers::World)
+          .with_mask(PhysicsLayers::Enemies)
+          .with_mask(PhysicsLayers::Attacks)
+          .with_mask(PhysicsLayers::Player)
+          .with_mask(PhysicsLayers::Corpses)
+      )
       .insert(CollisionShape::Cuboid {
         half_extends: Vec3::new(
           rect.width as f32 * layer_settings.tile_size.0 / 6.,
@@ -112,9 +121,29 @@ pub fn generate_level(
       });
   }
 
-  commands.spawn().insert(LevelLoader {
+  commands.spawn().insert(LevelTag).insert(LevelLoader {
     timer: Timer::from_seconds(1.0, false),
   });
+
+  commands
+    .spawn()
+    .insert(LevelTag)
+    .insert(Transform::from_translation(Vec3::new(
+      level.exit_point.x as f32 * layer_settings.tile_size.0 + layer_settings.tile_size.0 / 2.,
+      level.exit_point.y as f32 * layer_settings.tile_size.0 + layer_settings.tile_size.0 / 2.,
+      0.,
+    )))
+    .insert(GlobalTransform::default())
+    .insert(RigidBody::Sensor)
+    .insert(
+      CollisionLayers::none()
+        .with_group(PhysicsLayers::Exit)
+        .with_mask(PhysicsLayers::Player),
+    )
+    .insert(CollisionShape::Cuboid {
+      half_extends: Vec3::new(settings.tile_size.x / 2., settings.tile_size.y / 2., 0.),
+      border_radius: None,
+    });
 }
 
 pub fn load_complete(
@@ -131,4 +160,31 @@ pub fn load_complete(
     }
   }
 }
-pub fn check_level_complete() {}
+
+pub fn check_level_complete(
+  mut level_state: ResMut<State<LevelState>>,
+  mut events: EventReader<CollisionEvent>,
+) {
+  events
+    .iter()
+    .filter_map(|event| {
+      let (entity_1, entity_2) = event.rigid_body_entities();
+      let (layers_1, layers_2) = event.collision_layers();
+      if layers_1.contains_group(PhysicsLayers::Player)
+        && layers_2.contains_group(PhysicsLayers::Exit)
+      {
+        Some((entity_2, entity_1, event))
+      } else if layers_2.contains_group(PhysicsLayers::Player)
+        && layers_1.contains_group(PhysicsLayers::Exit)
+      {
+        Some((entity_1, entity_2, event))
+      } else {
+        None
+      }
+    })
+    .for_each(|(_exit, _player, _e)| {
+      level_state
+        .set(LevelState::LevelComplete)
+        .expect("set level state should always succeed");
+    });
+}

@@ -106,7 +106,6 @@ fn despawn_dead(
               .insert(
                 CollisionLayers::none()
                   .with_group(PhysicsLayers::Corpses)
-                  .with_mask(PhysicsLayers::AttackDead)
                   .with_mask(PhysicsLayers::World),
               )
               .insert(velocity)

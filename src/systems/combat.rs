@@ -282,6 +282,11 @@ fn spawn_spell_stuff(
                     ..Default::default()
                   })
                   .insert(spell.shape.clone())
+                  .insert(
+                    CollisionLayers::none()
+                      .with_group(PhysicsLayers::Attacks)
+                      .with_mask(PhysicsLayers::Enemies),
+                  )
                   .insert(AtlasAnimationDefinition {
                     start: sprite.start_frame,
                     end: sprite.end_frame,

@@ -8,11 +8,14 @@ use settings::LevelSettings;
 use systems::*;
 
 pub mod camera;
+pub mod complete;
 pub mod enemy;
 pub mod generator;
+pub mod loading;
 pub mod player;
 pub mod settings;
 pub mod systems;
+pub mod ui;
 
 #[derive(Clone, Eq, PartialEq, Debug, Hash)]
 pub enum LevelState {
@@ -20,6 +23,8 @@ pub enum LevelState {
   Loading,
   //  Paused,
   Loaded,
+  LevelComplete,
+  BossComplete,
 }
 #[derive(Component)]
 pub struct LevelLoader {
@@ -38,27 +43,55 @@ impl Plugin for LevelPlugin {
       .add_plugin(enemy::EnemyPlugin)
       .add_state(LevelState::Disabled)
       .init_resource::<generator::Level>()
+      .init_resource::<ui::Stats>()
+      .init_resource::<complete::CompletedLevels>()
       .init_resource::<LevelSettings<WallType, TileType>>()
       .add_system(crate::systems::set_texture_filters_to_nearest)
+      // loading
       .add_system_set(
         SystemSet::on_enter(LevelState::Loading)
-          .with_system(camera::setup_camera.label("load").after("cleanup"))
+          //.with_system(camera::setup_camera.label("load").after("cleanup"))
+          .with_system(cleanup_system::<camera::MainCamera>)
+          .with_system(loading::show_loading)
           .with_system(generate_level.label("load").after("cleanup"))
-          .with_system(cleanup_system::<LevelTag>.label("cleanup"))
-          //.with_system(despawn_player),
+          .with_system(cleanup_system::<LevelTag>.label("cleanup")),
       )
       .add_system_set(SystemSet::on_update(LevelState::Loading).with_system(load_complete))
-      .add_system_set(SystemSet::on_enter(LevelState::Loaded))
-        //.with_system(spawn_player)
-        //.with_system(camera::setup_camera))
-      .add_system_set(SystemSet::on_update(LevelState::Loaded)
-        .with_system(check_level_complete)
-        .with_system(camera::camera_system)
-        .with_system(camera::camera_system_initial_focus))
+      .add_system_set(
+        SystemSet::on_exit(LevelState::Loading).with_system(cleanup_system::<loading::LoadingTag>),
+      )
+      // loaded
+      .add_system_set(SystemSet::on_enter(LevelState::Loaded)
+        .with_system(camera::setup_camera)
+        .with_system(ui::create_ui))
+      .add_system_set(
+        SystemSet::on_update(LevelState::Loaded)
+          .with_system(check_level_complete)
+          .with_system(camera::camera_system)
+          .with_system(camera::camera_system_initial_focus),
+      )
+      // level complete
+      .add_system_set(
+        SystemSet::on_enter(LevelState::LevelComplete)
+          .with_system(cleanup_system::<camera::MainCamera>)
+          .with_system(complete::show_complete)
+          .with_system(generate_level.label("load").after("cleanup"))
+          .with_system(cleanup_system::<LevelTag>.label("cleanup")),
+      )
+      .add_system_set(
+        SystemSet::on_update(LevelState::LevelComplete)
+          .with_system(complete::wait_to_load_next_level),
+      )
+      .add_system_set(
+        SystemSet::on_exit(LevelState::LevelComplete)
+          .with_system(cleanup_system::<complete::CompleteLoadingTag>),
+      )
+      // disabled
       .add_system_set(
         SystemSet::on_enter(LevelState::Disabled)
           .with_system(cleanup_system::<LevelTag>)
-          //.with_system(despawn_player),
+          .with_system(cleanup_system::<camera::MainCamera>)
+          .with_system(complete::reset_level_count), //.with_system(despawn_player),
       );
   }
 }

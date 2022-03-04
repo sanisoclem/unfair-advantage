@@ -1,3 +1,4 @@
+use crate::game::level::ui::Stats;
 use super::{
   generator::{Level, Point},
   player::PlayerComponent,
@@ -115,6 +116,7 @@ pub fn spawn_enemies(
 fn despawn_dead(
   mut commands: Commands,
   mut level: ResMut<Level>,
+  mut stats: ResMut<Stats>,
   enemy_dic: Res<EnemyDictionary>,
   qry: Query<(&Enemy, &Transform, &Velocity)>,
   qry_killer: Query<&Transform>,
@@ -123,6 +125,7 @@ fn despawn_dead(
   for evt in evts.iter() {
     match evt {
       CombatEvent::CombatantKilled(victim_entity, killer_entity) => {
+        stats.kills += 1;
         let (enemy, transform, v) = qry.get(*victim_entity).expect("Enemy not found");
         let mut spawner = level.get_tile_mut(enemy.spawn_point.x, enemy.spawn_point.y);
         let def = enemy_dic

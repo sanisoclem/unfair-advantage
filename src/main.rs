@@ -51,7 +51,7 @@ fn main() {
     .add_plugin(splash::SplashPlugin)
     .add_plugin(menu::MenuPlugin)
     .add_plugin(game::GamePlugin)
-    .add_plugin(EditorPlugin)
+    // .add_plugin(EditorPlugin)
     .add_startup_system(setup)
     .run();
 }

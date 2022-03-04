@@ -13,6 +13,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -23,6 +24,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -33,6 +35,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -43,6 +46,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -53,6 +57,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -63,6 +68,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -73,6 +79,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -83,6 +90,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
 
@@ -94,6 +102,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -104,6 +113,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -114,6 +124,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -124,6 +135,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -134,6 +146,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -144,6 +157,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -154,6 +168,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -164,6 +179,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
 
@@ -176,6 +192,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -186,6 +203,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -196,6 +214,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -206,6 +225,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -216,6 +236,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -226,6 +247,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -236,6 +258,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -246,6 +269,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: true,
       random_start: true,
+      repeat_from: None,
     },
   );
 
@@ -258,6 +282,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -268,6 +293,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -281,6 +307,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -294,6 +321,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -304,6 +332,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -317,6 +346,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -330,6 +360,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -340,6 +371,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
 
@@ -352,6 +384,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -362,6 +395,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -375,6 +409,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -388,6 +423,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -398,6 +434,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -411,6 +448,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -424,6 +462,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -434,6 +473,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
 
@@ -449,6 +489,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -462,6 +503,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -475,6 +517,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -488,6 +531,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -501,6 +545,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -514,6 +559,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -527,6 +573,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations.insert(
@@ -540,6 +587,7 @@ pub fn build_animations(
       fps: 10.,
       repeat: false,
       random_start: false,
+      repeat_from: None,
     },
   );
   animations

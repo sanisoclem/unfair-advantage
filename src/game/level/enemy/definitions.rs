@@ -28,7 +28,7 @@ impl FromWorld for EnemyDictionary {
         .get_resource::<AssetServer>()
         .expect("should find asset server");
       (
-        asset_server.load("pack2/full spritesheet2.png"),
+        asset_server.load("full spritesheet2.png"),
         asset_server.load("boss.png"),
       )
     };
@@ -51,6 +51,7 @@ impl FromWorld for EnemyDictionary {
           fps: 10.,
           repeat: true,
           random_start: true,
+          repeat_from: None,
         },
         death: AtlasAnimationDefinition {
           start: 84,
@@ -58,6 +59,7 @@ impl FromWorld for EnemyDictionary {
           fps: 10.,
           repeat: false,
           random_start: false,
+          repeat_from: None,
         },
       },
     );
@@ -73,6 +75,7 @@ impl FromWorld for EnemyDictionary {
           fps: 10.,
           repeat: true,
           random_start: true,
+          repeat_from: None,
         },
         death: AtlasAnimationDefinition {
           start: 28,
@@ -80,6 +83,7 @@ impl FromWorld for EnemyDictionary {
           fps: 10.,
           repeat: false,
           random_start: false,
+          repeat_from: None,
         },
       },
     );
@@ -96,6 +100,7 @@ impl FromWorld for EnemyDictionary {
           fps: 10.,
           repeat: true,
           random_start: true,
+          repeat_from: None,
         },
         death: AtlasAnimationDefinition {
           start: 0,
@@ -103,6 +108,7 @@ impl FromWorld for EnemyDictionary {
           fps: 10.,
           repeat: false,
           random_start: false,
+          repeat_from: None,
         },
       },
     );
@@ -121,6 +127,7 @@ impl FromWorld for EnemyDictionary {
           end: 336 + 11,
           fps: 10.,
           repeat: true,
+          repeat_from: None,
           random_start: true,
         },
         death: AtlasAnimationDefinition {
@@ -129,6 +136,7 @@ impl FromWorld for EnemyDictionary {
           fps: 10.,
           repeat: false,
           random_start: false,
+          repeat_from: None,
         },
       },
     );

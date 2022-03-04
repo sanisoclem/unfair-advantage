@@ -226,6 +226,7 @@ fn spawn_spell_stuff(
                     },
                     repeat: sprite.repeatable,
                     random_start: false,
+                    repeat_from: None,
                   })
                   .insert(AtlasAnimation::default());
               });
@@ -297,6 +298,7 @@ fn spawn_spell_stuff(
                     },
                     repeat: sprite.repeatable,
                     random_start: false,
+                    repeat_from: None,
                   })
                   .insert(AtlasAnimation::default());
               });
@@ -345,6 +347,7 @@ fn spawn_spell_stuff(
                     },
                     repeat: sprite.repeatable,
                     random_start: false,
+                    repeat_from: None,
                   })
                   .insert(AtlasAnimation::default());
               });

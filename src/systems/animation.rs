@@ -25,6 +25,7 @@ pub struct AtlasAnimationDefinition {
   pub end: usize,
   pub fps: f32,
   pub repeat: bool,
+  pub repeat_from: Option<usize>,
   pub random_start: bool,
 }
 impl AtlasAnimationDefinition {
@@ -107,7 +108,17 @@ fn animate_sprites(
     if animation.enabled {
       animation.timer.tick(time.delta());
       if animation.timer.just_finished() {
-        sprite.index = def.start + ((sprite.index + 1 - def.start) % (def.end - def.start + 1));
+        let new_index = sprite.index + 1;
+        if new_index > def.end {
+          if let Some(repeat_from) = def.repeat_from {
+            sprite.index = repeat_from;
+          } else {
+            sprite.index = def.start;
+          }
+        } else {
+          sprite.index = new_index;
+        }
+        //sprite.index = def.start + ((sprite.index + 1 - def.start) % (def.end - def.start + 1));
 
         if !def.repeat
           && ((!def.random_start && sprite.index == def.end)

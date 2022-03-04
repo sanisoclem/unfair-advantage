@@ -37,7 +37,7 @@ fn splash_setup(
   mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 ) {
   let banner = asset_server.load("banner-spritesheet.png");
-  let texture_atlas = TextureAtlas::from_grid(banner, Vec2::new(905.0, 363.0), 6, 1);
+  let texture_atlas = TextureAtlas::from_grid(banner, Vec2::new(905.0, 363.0), 11, 1);
   let texture_atlas_handle = texture_atlases.add(texture_atlas);
 
   commands
@@ -53,16 +53,17 @@ fn splash_setup(
     })
     .insert(AtlasAnimationDefinition {
       start: 0,
-      end: 5,
-      fps: 5.,
+      end: 10,
+      fps: 8.,
       repeat: true,
-      random_start: true,
+      random_start: false,
+      repeat_from: Some(9),
     })
     .insert(AtlasAnimation::default())
     .insert(OnSplashScreen);
 
   // Insert the timer as a resource
-  commands.insert_resource(SplashTimer(Timer::from_seconds(3.0, false)));
+  commands.insert_resource(SplashTimer(Timer::from_seconds(10.0, false)));
 }
 
 // Tick the timer, and change state when finished

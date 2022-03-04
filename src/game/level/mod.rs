@@ -68,6 +68,7 @@ impl Plugin for LevelPlugin {
         SystemSet::on_update(LevelState::Loaded)
           .with_system(check_level_complete)
           .with_system(camera::camera_system)
+          .with_system(ui::measure_time)
           .with_system(camera::camera_system_initial_focus),
       )
       // level complete
@@ -75,6 +76,7 @@ impl Plugin for LevelPlugin {
         SystemSet::on_enter(LevelState::LevelComplete)
           .with_system(cleanup_system::<camera::MainCamera>)
           .with_system(complete::show_complete)
+          .with_system(ui::count_levels)
           .with_system(generate_level.label("load").after("cleanup"))
           .with_system(cleanup_system::<LevelTag>.label("cleanup")),
       )
@@ -98,11 +100,10 @@ impl Plugin for LevelPlugin {
 
 impl FromWorld for LevelSettings<WallType, TileType> {
   fn from_world(world: &mut World) -> Self {
-    info!("init textures");
     let asset_server = world
       .get_resource::<AssetServer>()
       .expect("should find asset server");
-    let texture_handle = asset_server.load("pack2/full tilemap.png");
+    let texture_handle = asset_server.load("full tilemap.png");
 
     let mut wall_tiles = HashMap::default();
 

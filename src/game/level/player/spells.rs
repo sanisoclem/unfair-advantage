@@ -8,7 +8,7 @@ pub fn build_spells(
 ) -> HashMap<SpellType, Spell> {
   let mut spells = HashMap::default();
 
-  let texture_handle = asset_server.load("combat/Dark VFX 8 (72x32).png");
+  let texture_handle = asset_server.load("Dark VFX 8 (72x32).png");
   let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(72.0, 32.0), 16, 1);
   let texture_atlas_handle = texture_atlases.add(texture_atlas);
 

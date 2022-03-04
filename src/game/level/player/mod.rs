@@ -264,7 +264,6 @@ fn process_cmd(
     }
     (PlayerCommand::Dash(dir), _) => {
       if !dash.on_cooldown {
-        info!("dash! {:?}", dir);
         player.state = PlayerStateMachine::Dashing(dir.clone());
         character.state = PlayerAnimationState::Dashing;
         character.direction_vec = (dir.clone() - transform.translation.xy()).normalize();
@@ -300,7 +299,7 @@ fn process_cmd(
     }
     (cmd, _) => {
       // can't execute command
-      warn!("Unknown command");
+      //warn!("Unknown command");
       if !is_retry {
         queue.pending_action = Some(cmd.clone());
         queue.pending_action_timer = Timer::from_seconds(0.2, false);

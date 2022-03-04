@@ -38,15 +38,6 @@ pub struct CustomAnimation<T1, T2> {
   pub ease: fn(Duration, Mut<T1>, Mut<T2>),
 }
 
-pub fn animate_custom<T1: Component, T2: Component>(
-  time: Res<Time>,
-  mut qry: Query<(&CustomAnimation<T1, T2>, &mut T1, &mut T2)>,
-) {
-  for (anim, c1, c2) in qry.iter_mut() {
-    (anim.ease)(time.delta(), c1, c2);
-  }
-}
-
 #[derive(Component)]
 pub struct TimedLife {
   pub timer: Timer,
@@ -118,7 +109,10 @@ fn animate_sprites(
       if animation.timer.just_finished() {
         sprite.index = def.start + ((sprite.index + 1 - def.start) % (def.end - def.start + 1));
 
-        if !def.repeat && ((!def.random_start && sprite.index == def.end) || sprite.index == animation.start_frame) {
+        if !def.repeat
+          && ((!def.random_start && sprite.index == def.end)
+            || sprite.index == animation.start_frame)
+        {
           animation.enabled = false;
           animation.complete = true;
         }

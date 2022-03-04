@@ -1,4 +1,4 @@
-use super::MainCamera;
+use crate::game::level::camera::MainCamera;
 use bevy::prelude::*;
 
 #[derive(Default)]
@@ -28,7 +28,7 @@ fn set_mouse_info(
       // use it to convert ndc to world-space coordinates
       let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));
 
-      mouse_info.world_pos3 = world_pos;
+      mouse_info.world_pos3 = Vec3::new(world_pos.x, world_pos.y, 0.);
       mouse_info.world_pos2 = world_pos.truncate();
       mouse_info.screen_pos = pos;
     }

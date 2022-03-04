@@ -1,17 +1,17 @@
-use crate::systems::CombatAction;
-use crate::systems::AtlasAnimation;
-use crate::systems::Combatant;
-use crate::systems::Immortal;
-use crate::systems::SimpleDirection;
-use crate::systems::SpellType;
-use crate::systems::Spellbook;
-use crate::systems::TopDownCharacter;
-use bevy::utils::HashMap;
+use super::{LevelState, LevelTag};
+use crate::systems::{
+  AtlasAnimation, CombatAction, Combatant, Immortal, SimpleDirection, SpellType, Spellbook,
+  TopDownCharacter,
+};
 use bevy::{math::Vec3Swizzles, prelude::*};
-use heron::prelude::*;
+use heron::{
+  prelude::*,
+  rapier_plugin::{PhysicsWorld, ShapeCastCollisionType},
+};
 use std::{fmt::Debug, hash::Hash};
 
-use crate::systems::{cleanup_system, CameraTarget, MouseInfo, Movement, PhysicsLayers};
+use super::camera::CameraTarget;
+use crate::systems::{MouseInfo, Movement, PhysicsLayers};
 
 mod animations;
 mod spells;
@@ -39,12 +39,6 @@ pub struct PlayerSpells {
   pub player_state_version: u32,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub enum PlayerState {
-  Despawned,
-  Active,
-}
-
 pub enum PlayerCommand {
   Stop,
   Move(Vec2),
@@ -62,7 +56,7 @@ pub enum PlayerStateMachine {
   PreparingSpell(SpellType, Vec2),
   CastingSpell(SpellType, Vec2),
   RecoveringFromSpell(SpellType, Vec2),
-  Bored,
+  // Bored,
 }
 impl Default for PlayerStateMachine {
   fn default() -> Self {
@@ -78,7 +72,7 @@ pub enum PlayerAnimationState {
   PreparingSpell,
   CastingSpell,
   RecoveringFromSpell,
-  Bored,
+  // Bored,
 }
 impl From<&PlayerStateMachine> for PlayerAnimationState {
   fn from(state: &PlayerStateMachine) -> Self {
@@ -89,13 +83,13 @@ impl From<&PlayerStateMachine> for PlayerAnimationState {
       PlayerStateMachine::PreparingSpell(_, _) => PlayerAnimationState::PreparingSpell,
       PlayerStateMachine::CastingSpell(_, _) => PlayerAnimationState::CastingSpell,
       PlayerStateMachine::RecoveringFromSpell(_, _) => PlayerAnimationState::RecoveringFromSpell,
-      PlayerStateMachine::Bored => PlayerAnimationState::Bored,
+      // PlayerStateMachine::Bored => PlayerAnimationState::Bored,
     }
   }
 }
 
 fn spawn_player(
-  level: Res<super::level::maps2::Level>,
+  level: Res<super::generator::Level>,
   mut commands: Commands,
   asset_server: Res<AssetServer>,
   mut texture_atlases: ResMut<Assets<TextureAtlas>>,
@@ -110,7 +104,7 @@ fn spawn_player(
   commands
     .spawn_bundle(SpriteSheetBundle {
       texture_atlas: texture_atlas_handle.clone(),
-      transform: Transform::from_scale(Vec3::splat(0.25)).with_translation(Vec3::new(
+      transform: Transform::from_scale(Vec3::splat(0.1)).with_translation(Vec3::new(
         level.player_start_position.x as f32 * 16.0, // hax
         level.player_start_position.y as f32 * 16.0,
         crate::z::PLAYER,
@@ -127,13 +121,12 @@ fn spawn_player(
       direction: SimpleDirection::from(initial_direction),
       animations: animations::build_animations(),
     })
+    // unload this entity once level unloads
+    .insert(LevelTag)
     // mark this as the player
     .insert(player)
     // we can get damaged and die
-    .insert(Combatant {
-      hp: 1.,
-      hp_max: 1.,
-    })
+    .insert(Combatant { hp: 1., hp_max: 1. })
     // but we are immortal
     .insert(Immortal)
     // we have a spellbook to cast spells
@@ -173,8 +166,8 @@ fn spawn_player(
     .with_children(|builder| {
       builder
         .spawn()
-        .insert(Transform::from_translation(Vec3::new(0.0, -10.0, 0.0)))
-        .insert(CollisionShape::Sphere { radius: 10. });
+        .insert(Transform::from_translation(Vec3::new(0.0, -10.0, 0.0)));
+      //.insert(CollisionShape::Sphere { radius: 10. });
     });
 }
 
@@ -182,13 +175,38 @@ fn read_input(
   mouse_button_input: Res<Input<MouseButton>>,
   mouse_info: Res<MouseInfo>,
   keyboard_input: Res<Input<KeyCode>>,
+  physics_world: PhysicsWorld,
   mut evts: EventWriter<PlayerCommand>,
-  mut qry: Query<(&PlayerComponent, &Transform)>,
+  mut qry: Query<(&PlayerComponent, &Transform, &CollisionShape)>,
 ) {
-  if let Ok((_player, transform)) = qry.get_single_mut() {
+  if let Ok((_player, transform, shape)) = qry.get_single_mut() {
     let player_pos = transform.translation.xy();
     if mouse_button_input.just_pressed(MouseButton::Left) {
-      evts.send(PlayerCommand::Move(mouse_info.world_pos2));
+      let result = physics_world.shape_cast_with_filter(
+        &shape,
+        Vec3::from((transform.translation.xy(), 0.)),
+        Quat::IDENTITY,
+        mouse_info.world_pos3 - Vec3::from((transform.translation.xy(), 0.)),
+        CollisionLayers::none()
+          .with_group(PhysicsLayers::MovementSensor)
+          .with_mask(PhysicsLayers::World),
+        |_| true,
+      );
+
+      let pos = match result {
+        Some(hit) => match hit.collision_type {
+          ShapeCastCollisionType::Collided(info) => Some(
+            (info.self_end_position.xy() - transform.translation.xy()) * 0.9
+              + transform.translation.xy()
+          ),
+          _ => None,
+        },
+        None => Some(mouse_info.world_pos2),
+      };
+
+      if let Some(target_pos) = pos {
+        evts.send(PlayerCommand::Move(target_pos));
+      }
     }
     if mouse_button_input.just_pressed(MouseButton::Right) {
       evts.send(PlayerCommand::PrepareSpell(
@@ -200,7 +218,6 @@ fn read_input(
       evts.send(PlayerCommand::Dash(
         (mouse_info.world_pos2 - player_pos).normalize(),
       ));
-      //info!("Sending dash command");
     }
   }
 }
@@ -224,9 +241,8 @@ fn update_state(
         }
         (PlayerCommand::Move(dir), PlayerStateMachine::Running(_))
         | (PlayerCommand::Move(dir), PlayerStateMachine::Idle)
-        | (PlayerCommand::Move(dir), PlayerStateMachine::RecoveringFromSpell(_,_))
-        | (PlayerCommand::Move(dir), PlayerStateMachine::PreparingSpell(_,_))
-        | (PlayerCommand::Move(dir), PlayerStateMachine::Bored) => {
+        | (PlayerCommand::Move(dir), PlayerStateMachine::RecoveringFromSpell(_, _))
+        | (PlayerCommand::Move(dir), PlayerStateMachine::PreparingSpell(_, _)) => {
           player.state = PlayerStateMachine::Running(dir.clone());
           character.state = PlayerAnimationState::Running;
           character.direction_vec = (dir.clone() - transform.translation.xy()).normalize();
@@ -238,17 +254,16 @@ fn update_state(
             character.state = PlayerAnimationState::Dashing;
             character.direction_vec = dir.clone();
             player.version += 1;
-            //info!("set dash state");
           }
         }
-        (PlayerCommand::PrepareSpell(spell_type, dir), PlayerStateMachine::Bored)
-        | (PlayerCommand::PrepareSpell(spell_type, dir), PlayerStateMachine::Running(_))
+
+        (PlayerCommand::PrepareSpell(spell_type, dir), PlayerStateMachine::Running(_))
         | (PlayerCommand::PrepareSpell(spell_type, dir), PlayerStateMachine::Idle) => {
           player.state = PlayerStateMachine::PreparingSpell(*spell_type, dir.clone());
           character.state = PlayerAnimationState::PreparingSpell;
           character.direction_vec = dir.normalize();
           player.version += 1;
-        },
+        }
         (PlayerCommand::CastSpell, PlayerStateMachine::PreparingSpell(spell_type, dir)) => {
           let st = spell_type.clone();
           let d = dir.clone();
@@ -256,7 +271,7 @@ fn update_state(
           character.state = PlayerAnimationState::CastingSpell;
           character.direction_vec = d.normalize();
           player.version += 1;
-        },
+        }
         (PlayerCommand::RecoverFromSpell, PlayerStateMachine::CastingSpell(spell_type, dir)) => {
           let st = spell_type.clone();
           let d = dir.clone();
@@ -270,15 +285,16 @@ fn update_state(
           warn!("Unknown command");
         }
       }
-
-      info!("player state: {:?}", player.state);
     }
   }
 }
 
 fn sync_spells(
-  mut qry: Query<(Entity, &PlayerComponent, &mut PlayerSpells, &Spellbook), Changed<PlayerComponent>>,
-  mut evts: EventWriter<CombatAction>
+  mut qry: Query<
+    (Entity, &PlayerComponent, &mut PlayerSpells, &Spellbook),
+    Changed<PlayerComponent>,
+  >,
+  mut evts: EventWriter<CombatAction>,
 ) {
   for (entity, player, mut active_spell, spells) in &mut qry.iter_mut() {
     if active_spell.player_state_version == player.version {
@@ -289,18 +305,30 @@ fn sync_spells(
       PlayerStateMachine::PreparingSpell(spell_type, dir) => {
         let spell = spells.spells.get(spell_type).expect("should find spell");
         active_spell.timer = Timer::from_seconds(spell.prepare_duration, false);
-        evts.send(CombatAction::PrepareSpell(entity, spell_type.clone(), dir.clone()));
-      },
+        evts.send(CombatAction::PrepareSpell(
+          entity,
+          spell_type.clone(),
+          dir.clone(),
+        ));
+      }
       PlayerStateMachine::CastingSpell(spell_type, dir) => {
         let spell = spells.spells.get(spell_type).expect("should find spell");
         active_spell.timer = Timer::from_seconds(spell.cast_duration, false);
-        evts.send(CombatAction::CastSpell(entity, spell_type.clone(), dir.clone()));
-      },
+        evts.send(CombatAction::CastSpell(
+          entity,
+          spell_type.clone(),
+          dir.clone(),
+        ));
+      }
       PlayerStateMachine::RecoveringFromSpell(spell_type, dir) => {
         let spell = spells.spells.get(spell_type).expect("should find spell");
         active_spell.timer = Timer::from_seconds(spell.recovery_duration, false);
-        evts.send(CombatAction::RecoverFromSpell(entity, spell_type.clone(), dir.clone()));
-      },
+        evts.send(CombatAction::RecoverFromSpell(
+          entity,
+          spell_type.clone(),
+          dir.clone(),
+        ));
+      }
       _ => {
         if !active_spell.timer.finished() {
           active_spell.timer.reset();
@@ -311,22 +339,25 @@ fn sync_spells(
   }
 }
 
-fn run_spells(time: Res<Time>, mut qry: Query<(&PlayerComponent, &mut PlayerSpells)>, mut evts: EventWriter<PlayerCommand>) {
+fn run_spells(
+  time: Res<Time>,
+  mut qry: Query<(&PlayerComponent, &mut PlayerSpells)>,
+  mut evts: EventWriter<PlayerCommand>,
+) {
   for (player, mut active_spell) in &mut qry.iter_mut() {
-
     active_spell.timer.tick(time.delta());
 
     if active_spell.timer.just_finished() {
       match &player.state {
         PlayerStateMachine::PreparingSpell(_, _) => {
           evts.send(PlayerCommand::CastSpell);
-        },
+        }
         PlayerStateMachine::CastingSpell(_, _) => {
           evts.send(PlayerCommand::RecoverFromSpell);
-        },
+        }
         PlayerStateMachine::RecoveringFromSpell(_, _) => {
           evts.send(PlayerCommand::Stop);
-        },
+        }
         _ => {}
       }
     }
@@ -361,7 +392,6 @@ fn start_dash_player(
   for (player, mut dash) in &mut qry.iter_mut() {
     if let PlayerStateMachine::Dashing(_) = &player.state {
       if player.version > dash.player_state_version {
-        //info!("Start dashing");
         dash.player_state_version = player.version;
         dash.timer = Timer::from_seconds(dash.dash_duration, false);
         dash.cd_timer = Timer::from_seconds(dash.cooldown, false);
@@ -382,7 +412,6 @@ fn dash_player(
       dash.timer.tick(time.delta());
       if dash.timer.just_finished() {
         evts.send(PlayerCommand::Stop);
-        //info!("stop dashing");
       } else {
         transform.translation.x += dir.x * speed * time.delta_seconds();
         transform.translation.y += dir.y * speed * time.delta_seconds();
@@ -402,14 +431,10 @@ impl Plugin for PlayerPlugin {
   fn build(&self, app: &mut App) {
     app
       .add_event::<PlayerCommand>()
-      .add_state(PlayerState::Despawned)
       .add_plugin(crate::systems::CharacterPlugin::<PlayerAnimationState>::default())
+      .add_system_set(SystemSet::on_enter(LevelState::Loaded).with_system(spawn_player))
       .add_system_set(
-        SystemSet::on_enter(PlayerState::Despawned).with_system(cleanup_system::<PlayerComponent>),
-      )
-      .add_system_set(SystemSet::on_exit(PlayerState::Despawned).with_system(spawn_player))
-      .add_system_set(
-        SystemSet::on_update(PlayerState::Active)
+        SystemSet::on_update(LevelState::Loaded)
           .with_system(read_input)
           .with_system(move_player)
           .with_system(stop_when_destination_reached)

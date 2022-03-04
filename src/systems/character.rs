@@ -1,6 +1,5 @@
 use crate::systems::AtlasAnimationDefinition;
-use bevy::prelude::*;
-use bevy::utils::HashMap;
+use bevy::{prelude::*, utils::HashMap};
 use core::marker::PhantomData;
 use std::hash::Hash;
 
@@ -101,8 +100,6 @@ where
         .get(&(character.direction, character.state))
       {
         *animation = anim.clone();
-
-      //info!("animation updated {:?}", character.direction);
       }
     }
   }
@@ -117,7 +114,6 @@ where
         .get(&(character.direction, character.state))
         .expect("No animation for direction");
       commands.entity(entity).insert(anim.clone());
-      //info!("inserted new animation")
     }
   }
 }

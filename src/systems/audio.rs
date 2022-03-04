@@ -13,12 +13,10 @@ impl Plugin for AudioPlugin {
 }
 
 fn play_temp_music(asset_server: Res<AssetServer>, audio: Res<Audio>) {
-  //let music = asset_server.load("sounds/Windless Slopes.ogg");
-  //audio.play(music);
+  let music = asset_server.load("sounds/Windless Slopes.ogg");
+  audio.play(music);
 }
 
 fn play_effects(_qry: Query<&SoundEffectSource>) {
   // TODO
 }
-
-

@@ -1,6 +1,5 @@
-use crate::game::player::PlayerAnimationState;
-use crate::systems::AtlasAnimationDefinition;
-use crate::systems::SimpleDirection;
+use super::PlayerAnimationState;
+use crate::systems::{AtlasAnimationDefinition, SimpleDirection};
 use bevy::utils::HashMap;
 
 pub fn build_animations(
@@ -272,7 +271,10 @@ pub fn build_animations(
     },
   );
   animations.insert(
-    (SimpleDirection::NorthEast, PlayerAnimationState::PreparingSpell),
+    (
+      SimpleDirection::NorthEast,
+      PlayerAnimationState::PreparingSpell,
+    ),
     AtlasAnimationDefinition {
       start: 24 + 24 + 24,
       end: 37 + 24 + 24,
@@ -282,7 +284,10 @@ pub fn build_animations(
     },
   );
   animations.insert(
-    (SimpleDirection::NorthWest, PlayerAnimationState::PreparingSpell),
+    (
+      SimpleDirection::NorthWest,
+      PlayerAnimationState::PreparingSpell,
+    ),
     AtlasAnimationDefinition {
       start: 24 + 24 + 24 + 24,
       end: 37 + 24 + 24 + 24,
@@ -302,7 +307,10 @@ pub fn build_animations(
     },
   );
   animations.insert(
-    (SimpleDirection::SouthEast, PlayerAnimationState::PreparingSpell),
+    (
+      SimpleDirection::SouthEast,
+      PlayerAnimationState::PreparingSpell,
+    ),
     AtlasAnimationDefinition {
       start: 24 + 24 + 24 + 24 + 24 + 24,
       end: 37 + 24 + 24 + 24 + 24 + 24,
@@ -312,7 +320,10 @@ pub fn build_animations(
     },
   );
   animations.insert(
-    (SimpleDirection::SouthWest, PlayerAnimationState::PreparingSpell),
+    (
+      SimpleDirection::SouthWest,
+      PlayerAnimationState::PreparingSpell,
+    ),
     AtlasAnimationDefinition {
       start: 24 + 24 + 24 + 24 + 24 + 24 + 24,
       end: 37 + 24 + 24 + 24 + 24 + 24 + 24,
@@ -354,7 +365,10 @@ pub fn build_animations(
     },
   );
   animations.insert(
-    (SimpleDirection::NorthEast, PlayerAnimationState::CastingSpell),
+    (
+      SimpleDirection::NorthEast,
+      PlayerAnimationState::CastingSpell,
+    ),
     AtlasAnimationDefinition {
       start: 38 + 24 + 24,
       end: 39 + 24 + 24,
@@ -364,7 +378,10 @@ pub fn build_animations(
     },
   );
   animations.insert(
-    (SimpleDirection::NorthWest, PlayerAnimationState::CastingSpell),
+    (
+      SimpleDirection::NorthWest,
+      PlayerAnimationState::CastingSpell,
+    ),
     AtlasAnimationDefinition {
       start: 38 + 24 + 24 + 24,
       end: 39 + 24 + 24 + 24,
@@ -384,7 +401,10 @@ pub fn build_animations(
     },
   );
   animations.insert(
-    (SimpleDirection::SouthEast, PlayerAnimationState::CastingSpell),
+    (
+      SimpleDirection::SouthEast,
+      PlayerAnimationState::CastingSpell,
+    ),
     AtlasAnimationDefinition {
       start: 38 + 24 + 24 + 24 + 24 + 24,
       end: 39 + 24 + 24 + 24 + 24 + 24,
@@ -394,7 +414,10 @@ pub fn build_animations(
     },
   );
   animations.insert(
-    (SimpleDirection::SouthWest, PlayerAnimationState::CastingSpell),
+    (
+      SimpleDirection::SouthWest,
+      PlayerAnimationState::CastingSpell,
+    ),
     AtlasAnimationDefinition {
       start: 38 + 24 + 24 + 24 + 24 + 24 + 24,
       end: 39 + 24 + 24 + 24 + 24 + 24 + 24,
@@ -416,7 +439,10 @@ pub fn build_animations(
 
   // Recovering
   animations.insert(
-    (SimpleDirection::East, PlayerAnimationState::RecoveringFromSpell),
+    (
+      SimpleDirection::East,
+      PlayerAnimationState::RecoveringFromSpell,
+    ),
     AtlasAnimationDefinition {
       start: 40,
       end: 47,
@@ -426,7 +452,10 @@ pub fn build_animations(
     },
   );
   animations.insert(
-    (SimpleDirection::North, PlayerAnimationState::RecoveringFromSpell),
+    (
+      SimpleDirection::North,
+      PlayerAnimationState::RecoveringFromSpell,
+    ),
     AtlasAnimationDefinition {
       start: 40 + 24,
       end: 47 + 24,
@@ -436,7 +465,10 @@ pub fn build_animations(
     },
   );
   animations.insert(
-    (SimpleDirection::NorthEast, PlayerAnimationState::RecoveringFromSpell),
+    (
+      SimpleDirection::NorthEast,
+      PlayerAnimationState::RecoveringFromSpell,
+    ),
     AtlasAnimationDefinition {
       start: 40 + 24 + 24,
       end: 47 + 24 + 24,
@@ -446,7 +478,10 @@ pub fn build_animations(
     },
   );
   animations.insert(
-    (SimpleDirection::NorthWest, PlayerAnimationState::RecoveringFromSpell),
+    (
+      SimpleDirection::NorthWest,
+      PlayerAnimationState::RecoveringFromSpell,
+    ),
     AtlasAnimationDefinition {
       start: 40 + 24 + 24 + 24,
       end: 47 + 24 + 24 + 24,
@@ -456,7 +491,10 @@ pub fn build_animations(
     },
   );
   animations.insert(
-    (SimpleDirection::South, PlayerAnimationState::RecoveringFromSpell),
+    (
+      SimpleDirection::South,
+      PlayerAnimationState::RecoveringFromSpell,
+    ),
     AtlasAnimationDefinition {
       start: 40 + 24 + 24 + 24 + 24,
       end: 47 + 24 + 24 + 24 + 24,
@@ -466,7 +504,10 @@ pub fn build_animations(
     },
   );
   animations.insert(
-    (SimpleDirection::SouthEast, PlayerAnimationState::RecoveringFromSpell),
+    (
+      SimpleDirection::SouthEast,
+      PlayerAnimationState::RecoveringFromSpell,
+    ),
     AtlasAnimationDefinition {
       start: 40 + 24 + 24 + 24 + 24 + 24,
       end: 47 + 24 + 24 + 24 + 24 + 24,
@@ -476,7 +517,10 @@ pub fn build_animations(
     },
   );
   animations.insert(
-    (SimpleDirection::SouthWest, PlayerAnimationState::RecoveringFromSpell),
+    (
+      SimpleDirection::SouthWest,
+      PlayerAnimationState::RecoveringFromSpell,
+    ),
     AtlasAnimationDefinition {
       start: 40 + 24 + 24 + 24 + 24 + 24 + 24,
       end: 47 + 24 + 24 + 24 + 24 + 24 + 24,
@@ -486,7 +530,10 @@ pub fn build_animations(
     },
   );
   animations.insert(
-    (SimpleDirection::West, PlayerAnimationState::RecoveringFromSpell),
+    (
+      SimpleDirection::West,
+      PlayerAnimationState::RecoveringFromSpell,
+    ),
     AtlasAnimationDefinition {
       start: 40 + 24 + 24 + 24 + 24 + 24 + 24 + 24,
       end: 47 + 24 + 24 + 24 + 24 + 24 + 24 + 24,

@@ -2,15 +2,16 @@ use bevy::{
   diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
   prelude::*,
 };
+use bevy_editor_pls::prelude::*;
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::{Inspectable, InspectorPlugin};
 use bevy_prototype_lyon::prelude::*;
-use bevy_editor_pls::prelude::*;
 
 mod game;
 mod menu;
 mod splash;
 mod systems;
+mod utils;
 mod z;
 
 #[derive(Clone, Eq, PartialEq, Debug, Hash, Copy)]
@@ -29,8 +30,8 @@ fn main() {
       height: 1080.,
       ..Default::default()
     })
-    .insert_resource(ClearColor(Color::rgb(0.01, 0.01, 0.05)))
-    .add_state(GameState::Game)
+    .insert_resource(ClearColor(Color::rgb(0.1568627450980392, 0.1568627450980392, 0.1568627450980392)))
+    .add_state(GameState::Splash)
     .add_plugins(DefaultPlugins)
     .add_plugin(EguiPlugin)
     // .add_plugin(LogDiagnosticsPlugin::default())
@@ -44,7 +45,6 @@ fn main() {
     .add_plugin(systems::PhysicsPlugin)
     .add_plugin(systems::MousePlugin)
     .add_plugin(systems::MovementPlugin)
-    .add_plugin(systems::TopDownCameraPlugin)
     .add_plugin(splash::SplashPlugin)
     .add_plugin(menu::MenuPlugin)
     .add_plugin(game::GamePlugin)

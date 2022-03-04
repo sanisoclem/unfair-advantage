@@ -1,8 +1,7 @@
 use crate::systems::{AtlasAnimation, AtlasAnimationDefinition, PhysicsLayers, TimedLife};
-use rand::distributions::{Distribution, Uniform};
-use bevy::utils::HashMap;
-use bevy::{math::Vec3Swizzles, prelude::*};
+use bevy::{math::Vec3Swizzles, prelude::*, utils::HashMap};
 use heron::prelude::*;
+use rand::distributions::{Distribution, Uniform};
 
 #[derive(Debug)]
 pub enum CombatEvent {
@@ -79,7 +78,7 @@ pub struct SpellSprite {
 
 pub enum SpellStatus {
   Ready,
-  Cooldown(Timer),
+  // Cooldown(Timer),
 }
 
 fn find_victims(mut qry: Query<&mut AreaOfEffect>, mut events: EventReader<CollisionEvent>) {
@@ -103,10 +102,8 @@ fn find_victims(mut qry: Query<&mut AreaOfEffect>, mut events: EventReader<Colli
     .for_each(|(enemy, attack, e)| {
       if let Ok(mut aoe) = qry.get_mut(attack) {
         if e.is_started() {
-          info!("victim added");
           aoe.victims.push(enemy);
         } else {
-          info!("victim removed");
           aoe.victims.retain(|victim| *victim != enemy);
         }
       }
@@ -184,12 +181,12 @@ fn show_damage(
 fn spawn_spell_stuff(
   mut commands: Commands,
   mut actions: EventReader<CombatAction>,
-  mut qry: Query<(&mut Spellbook, &Transform)>,
+  mut qry: Query<(&Spellbook, &Transform)>,
 ) {
   for action in actions.iter() {
     match action {
       CombatAction::PrepareSpell(entity, spell_type, dir) => {
-        if let Ok((mut spellbook, caster_transform)) = qry.get_mut(*entity) {
+        if let Ok((spellbook, caster_transform)) = qry.get_mut(*entity) {
           let spell = spellbook.spells.get(spell_type).expect("spell not found");
           if let Some(sprite) = &spell.prepare_sprite {
             commands
@@ -351,7 +348,7 @@ fn spawn_spell_stuff(
           warn!("spellcaster not found, cannot prepare spell");
         }
       }
-      CombatAction::CancelSpell(entity) => {
+      CombatAction::CancelSpell(_entity) => {
         // TODO: despawn?
       }
     }
@@ -372,7 +369,6 @@ fn setup(mut settings: ResMut<FlyingTextSettings>, asset_server: Res<AssetServer
     },
   };
 }
-
 
 #[derive(Component)]
 pub struct CombatPlugin;

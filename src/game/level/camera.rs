@@ -7,12 +7,13 @@ pub struct MainCamera;
 #[derive(Component)]
 pub struct CameraTarget;
 
-fn setup(mut commands: Commands) {
+pub fn setup_camera(mut commands: Commands) {
   let mut cam_bundle = OrthographicCameraBundle::new_2d();
   cam_bundle.transform = cam_bundle.transform.with_scale(Vec3::new(0.25, 0.25, 1.0));
 
   commands
     .spawn_bundle(cam_bundle)
+    .insert(super::LevelTag)
     .insert(MainCamera)
     .insert(Movement {
       speed: 600.0,
@@ -21,7 +22,7 @@ fn setup(mut commands: Commands) {
     });
 }
 
-fn camera_system(
+pub fn camera_system(
   mut qry: Query<(&MainCamera, &mut Movement)>,
   qry_target: Query<(Without<MainCamera>, &CameraTarget, &Transform)>,
 ) {
@@ -32,7 +33,7 @@ fn camera_system(
   }
 }
 
-fn camera_system_initial_focus(
+pub fn camera_system_initial_focus(
   mut qry: Query<(&MainCamera, &mut Transform)>,
   qry_target: Query<(Without<MainCamera>, &CameraTarget, &Transform), Added<CameraTarget>>,
 ) {
@@ -41,15 +42,5 @@ fn camera_system_initial_focus(
       cam_transform.translation.x = target_transform.translation.x;
       cam_transform.translation.y = target_transform.translation.y;
     }
-  }
-}
-
-#[derive(Component)]
-pub struct TopDownCameraPlugin;
-
-impl Plugin for TopDownCameraPlugin {
-  fn build(&self, app: &mut App) {
-    app.add_startup_system(setup).add_system(camera_system)
-    .add_system(camera_system_initial_focus);
   }
 }

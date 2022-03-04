@@ -63,7 +63,7 @@ fn splash_setup(
     .insert(OnSplashScreen);
 
   // Insert the timer as a resource
-  commands.insert_resource(SplashTimer(Timer::from_seconds(10.0, false)));
+  commands.insert_resource(SplashTimer(Timer::from_seconds(4.0, false)));
 }
 
 // Tick the timer, and change state when finished

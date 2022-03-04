@@ -54,7 +54,8 @@ pub fn spawn_enemies(
       }
 
       let enemy_type = match rng.gen_range(0..10u8) {
-        0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 => EnemyType::Slime,
+        0 | 1 | 2 | 3 | 4 | 5  => EnemyType::Slime,
+        6 | 7 => EnemyType::Eye,
         _ => EnemyType::Goblin,
       };
       let def = enemy_dict

@@ -1,3 +1,6 @@
+use crate::game::level::generator::TileType;
+use crate::game::level::generator::WallType;
+use crate::game::level::settings::LevelSettings;
 use bevy::{
   diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
   prelude::*,

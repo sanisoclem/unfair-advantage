@@ -6,7 +6,7 @@ pub enum EnemyType {
   Slime,
   Goblin,
   Boss,
-  // Eye,
+  Eye,
 }
 
 pub struct EnemyDefinition {
@@ -77,6 +77,29 @@ impl FromWorld for EnemyDictionary {
         death: AtlasAnimationDefinition {
           start: 28,
           end: 41,
+          fps: 10.,
+          repeat: false,
+          random_start: false,
+        },
+      },
+    );
+
+    enemies.insert(
+      EnemyType::Eye,
+      EnemyDefinition {
+        max_hp: 10.,
+        fodder: true,
+        texture_atlas: texture_atlas_handle.clone(),
+        idle: AtlasAnimationDefinition {
+          start: 0,
+          end: 3,
+          fps: 10.,
+          repeat: true,
+          random_start: true,
+        },
+        death: AtlasAnimationDefinition {
+          start: 0,
+          end: 11,
           fps: 10.,
           repeat: false,
           random_start: false,

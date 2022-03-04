@@ -98,6 +98,7 @@ impl Plugin for LevelPlugin {
 
 impl FromWorld for LevelSettings<WallType, TileType> {
   fn from_world(world: &mut World) -> Self {
+    info!("init textures");
     let asset_server = world
       .get_resource::<AssetServer>()
       .expect("should find asset server");

@@ -24,8 +24,16 @@ pub struct PlayerComponent {
 }
 
 #[derive(Component, Default)]
+pub struct ActionQueue {
+  pub pending_action: Option<PlayerCommand>, // queue actions to make it more responsive
+  pub pending_action_timer: Timer,
+}
+
+#[derive(Component, Default)]
 pub struct PlayerDash {
-  pub dash_speed: f32,
+  pub origin: Vec2,
+  pub direction: Vec2,
+  pub distance: f32,
   pub dash_duration: f32,
   pub cooldown: f32,
   pub on_cooldown: bool,
@@ -40,9 +48,9 @@ pub struct PlayerSpells {
   pub player_state_version: u32,
 }
 
+#[derive(Clone, Debug)]
 pub enum PlayerCommand {
   Stop,
-  MovePath(Vec<Vec2>),
   Move(Vec2),
   Dash(Vec2),
   PrepareSpell(SpellType, Vec2),
@@ -54,7 +62,6 @@ pub enum PlayerCommand {
 pub enum PlayerStateMachine {
   Idle,
   Running(Vec2),
-  RunningPath(Vec<Vec2>),
   Dashing(Vec2),
   PreparingSpell(SpellType, Vec2),
   CastingSpell(SpellType, Vec2),
@@ -82,7 +89,6 @@ impl From<&PlayerStateMachine> for PlayerAnimationState {
     match state {
       PlayerStateMachine::Idle => PlayerAnimationState::Idle,
       PlayerStateMachine::Running(_) => PlayerAnimationState::Running,
-      PlayerStateMachine::RunningPath(_) => PlayerAnimationState::Running,
       PlayerStateMachine::Dashing(_) => PlayerAnimationState::Dashing,
       PlayerStateMachine::PreparingSpell(_, _) => PlayerAnimationState::PreparingSpell,
       PlayerStateMachine::CastingSpell(_, _) => PlayerAnimationState::CastingSpell,
@@ -133,6 +139,8 @@ fn spawn_player(
     .insert(Combatant { hp: 1., hp_max: 1. })
     // but we are immortal
     .insert(Immortal)
+    // queue actions to feel more responsive
+    .insert(ActionQueue::default())
     // we have a spellbook to cast spells
     .insert(Spellbook {
       spells: spells::build_spells(asset_server, texture_atlases),
@@ -148,9 +156,8 @@ fn spawn_player(
     })
     // we can dash
     .insert(PlayerDash {
-      dash_speed: 500.0,
-      dash_duration: 0.3,
-      cooldown: 2.0,
+      dash_duration: 0.1,
+      cooldown: 0.5,
       ..Default::default()
     })
     // physics
@@ -176,34 +183,33 @@ fn read_input(
   mouse_info: Res<MouseInfo>,
   keyboard_input: Res<Input<KeyCode>>,
   physics_world: PhysicsWorld,
-  level: Res<super::generator::Level>,
   mut evts: EventWriter<PlayerCommand>,
   mut qry: Query<(&PlayerComponent, &Transform, &CollisionShape)>,
 ) {
   if let Ok((_player, transform, shape)) = qry.get_single_mut() {
     let player_pos = transform.translation.xy();
-    if mouse_button_input.just_pressed(MouseButton::Left) {
-      let result = physics_world.shape_cast_with_filter(
-        &shape,
-        Vec3::from((transform.translation.xy(), 0.)),
-        Quat::IDENTITY,
-        mouse_info.world_pos3 - Vec3::from((transform.translation.xy(), 0.)),
-        CollisionLayers::none()
-          .with_group(PhysicsLayers::MovementSensor)
-          .with_mask(PhysicsLayers::World),
-        |_| true,
-      );
-      let pos = match result {
-        Some(hit) => match hit.collision_type {
-          ShapeCastCollisionType::Collided(info) => Some(
-            (info.self_end_position.xy() - transform.translation.xy()) * 0.9
-              + transform.translation.xy(),
-          ),
-          _ => None,
-        },
-        None => Some(mouse_info.world_pos2),
-      };
+    let result = physics_world.shape_cast_with_filter(
+      &shape,
+      Vec3::from((transform.translation.xy(), 0.)),
+      Quat::IDENTITY,
+      mouse_info.world_pos3 - Vec3::from((transform.translation.xy(), 0.)),
+      CollisionLayers::none()
+        .with_group(PhysicsLayers::MovementSensor)
+        .with_mask(PhysicsLayers::World),
+      |_| true,
+    );
+    let pos = match result {
+      Some(hit) => match hit.collision_type {
+        ShapeCastCollisionType::Collided(info) => Some(
+          (info.self_end_position.xy() - transform.translation.xy()) * 0.9
+            + transform.translation.xy(),
+        ),
+        _ => None,
+      },
+      None => Some(mouse_info.world_pos2),
+    };
 
+    if mouse_button_input.just_pressed(MouseButton::Left) {
       if let Some(target_pos) = pos {
         evts.send(PlayerCommand::Move(target_pos));
       }
@@ -215,9 +221,91 @@ fn read_input(
       ));
     }
     if keyboard_input.just_pressed(KeyCode::Space) {
-      evts.send(PlayerCommand::Dash(
-        (mouse_info.world_pos2 - player_pos).normalize(),
-      ));
+      if let Some(target_pos) = pos {
+        let dist = (target_pos - player_pos).length();
+        if dist > 100. {
+          // TODO: parameterize max dash distance
+          evts.send(PlayerCommand::Dash(
+            (target_pos - player_pos).normalize() * 100. + player_pos,
+          ));
+        } else {
+          evts.send(PlayerCommand::Dash(target_pos));
+        }
+      }
+    }
+  }
+}
+
+fn process_cmd(
+  evt: &PlayerCommand,
+  character: &mut Mut<TopDownCharacter<PlayerAnimationState>>,
+  queue: &mut Mut<ActionQueue>,
+  transform: &Transform,
+  dash: &PlayerDash,
+  player: &mut Mut<PlayerComponent>,
+  is_retry: bool,
+) -> bool {
+  match (evt, &player.state) {
+    (PlayerCommand::Stop, _) => {
+      player.state = PlayerStateMachine::Idle;
+      character.state = PlayerAnimationState::Idle;
+      player.version += 1;
+      true
+    }
+    (PlayerCommand::Move(dir), PlayerStateMachine::Running(_))
+    | (PlayerCommand::Move(dir), PlayerStateMachine::Idle)
+    | (PlayerCommand::Move(dir), PlayerStateMachine::RecoveringFromSpell(_, _))
+    | (PlayerCommand::Move(dir), PlayerStateMachine::PreparingSpell(_, _)) => {
+      player.state = PlayerStateMachine::Running(dir.clone());
+      character.state = PlayerAnimationState::Running;
+      character.direction_vec = (dir.clone() - transform.translation.xy()).normalize();
+      player.version += 1;
+      true
+    }
+    (PlayerCommand::Dash(dir), _) => {
+      if !dash.on_cooldown {
+        info!("dash! {:?}", dir);
+        player.state = PlayerStateMachine::Dashing(dir.clone());
+        character.state = PlayerAnimationState::Dashing;
+        character.direction_vec = (dir.clone() - transform.translation.xy()).normalize();
+        player.version += 1;
+      }
+      true
+    }
+    (PlayerCommand::PrepareSpell(spell_type, dir), PlayerStateMachine::Running(_))
+    | (PlayerCommand::PrepareSpell(spell_type, dir), PlayerStateMachine::Idle) => {
+      player.state = PlayerStateMachine::PreparingSpell(*spell_type, dir.clone());
+      character.state = PlayerAnimationState::PreparingSpell;
+      character.direction_vec = dir.normalize();
+      player.version += 1;
+      true
+    }
+    (PlayerCommand::CastSpell, PlayerStateMachine::PreparingSpell(spell_type, dir)) => {
+      let st = spell_type.clone();
+      let d = dir.clone();
+      player.state = PlayerStateMachine::CastingSpell(st, d);
+      character.state = PlayerAnimationState::CastingSpell;
+      character.direction_vec = d.normalize();
+      player.version += 1;
+      true
+    }
+    (PlayerCommand::RecoverFromSpell, PlayerStateMachine::CastingSpell(spell_type, dir)) => {
+      let st = spell_type.clone();
+      let d = dir.clone();
+      player.state = PlayerStateMachine::RecoveringFromSpell(st, d);
+      character.state = PlayerAnimationState::RecoveringFromSpell;
+      character.direction_vec = d.normalize();
+      player.version += 1;
+      true
+    }
+    (cmd, _) => {
+      // can't execute command
+      warn!("Unknown command");
+      if !is_retry {
+        queue.pending_action = Some(cmd.clone());
+        queue.pending_action_timer = Timer::from_seconds(0.2, false);
+      }
+      false
     }
   }
 }
@@ -226,77 +314,30 @@ fn update_state(
   mut evts: EventReader<PlayerCommand>,
   mut qry: Query<(
     &mut PlayerComponent,
+    &mut ActionQueue,
     &mut TopDownCharacter<PlayerAnimationState>,
     &PlayerDash,
     &Transform,
   )>,
+  time: Res<Time>,
 ) {
-  if let Ok((mut player, mut character, dash, transform)) = qry.get_single_mut() {
+  if let Ok((mut player, mut queue, mut character, dash, transform)) = qry.get_single_mut() {
+    let mut event_processed = false;
     for evt in evts.iter() {
-      match (evt, &player.state) {
-        (PlayerCommand::Stop, _) => {
-          player.state = PlayerStateMachine::Idle;
-          character.state = PlayerAnimationState::Idle;
-          player.version += 1;
-        }
-        (PlayerCommand::Move(dir), PlayerStateMachine::RunningPath(_))
-        | (PlayerCommand::Move(dir), PlayerStateMachine::Running(_))
-        | (PlayerCommand::Move(dir), PlayerStateMachine::Idle)
-        | (PlayerCommand::Move(dir), PlayerStateMachine::RecoveringFromSpell(_, _))
-        | (PlayerCommand::Move(dir), PlayerStateMachine::PreparingSpell(_, _)) => {
-          player.state = PlayerStateMachine::Running(dir.clone());
-          character.state = PlayerAnimationState::Running;
-          character.direction_vec = (dir.clone() - transform.translation.xy()).normalize();
-          player.version += 1;
-        }
-        (PlayerCommand::MovePath(path), PlayerStateMachine::Running(_))
-        | (PlayerCommand::MovePath(path), PlayerStateMachine::RunningPath(_))
-        | (PlayerCommand::MovePath(path), PlayerStateMachine::Idle)
-        | (PlayerCommand::MovePath(path), PlayerStateMachine::RecoveringFromSpell(_, _))
-        | (PlayerCommand::MovePath(path), PlayerStateMachine::PreparingSpell(_, _)) => {
-          let paths = path.clone();
-          let first_path = paths[0].clone();
-          player.state = PlayerStateMachine::RunningPath(paths);
-          character.state = PlayerAnimationState::Running;
-          character.direction_vec = (first_path.clone() - transform.translation.xy()).normalize();
-          player.version += 1;
-        }
-        (PlayerCommand::Dash(dir), _) => {
-          if !dash.on_cooldown {
-            player.state = PlayerStateMachine::Dashing(dir.clone());
-            character.state = PlayerAnimationState::Dashing;
-            character.direction_vec = dir.clone();
-            player.version += 1;
-          }
-        }
+      event_processed =
+        event_processed || process_cmd(evt, &mut character, &mut queue, transform, dash, &mut player, false);
+    }
 
-        (PlayerCommand::PrepareSpell(spell_type, dir), PlayerStateMachine::Running(_))
-        | (PlayerCommand::PrepareSpell(spell_type, dir), PlayerStateMachine::RunningPath(_))
-        | (PlayerCommand::PrepareSpell(spell_type, dir), PlayerStateMachine::Idle) => {
-          player.state = PlayerStateMachine::PreparingSpell(*spell_type, dir.clone());
-          character.state = PlayerAnimationState::PreparingSpell;
-          character.direction_vec = dir.normalize();
-          player.version += 1;
-        }
-        (PlayerCommand::CastSpell, PlayerStateMachine::PreparingSpell(spell_type, dir)) => {
-          let st = spell_type.clone();
-          let d = dir.clone();
-          player.state = PlayerStateMachine::CastingSpell(st, d);
-          character.state = PlayerAnimationState::CastingSpell;
-          character.direction_vec = d.normalize();
-          player.version += 1;
-        }
-        (PlayerCommand::RecoverFromSpell, PlayerStateMachine::CastingSpell(spell_type, dir)) => {
-          let st = spell_type.clone();
-          let d = dir.clone();
-          player.state = PlayerStateMachine::RecoveringFromSpell(st, d);
-          character.state = PlayerAnimationState::RecoveringFromSpell;
-          character.direction_vec = d.normalize();
-          player.version += 1;
-        }
-        _ => {
-          // can't execute command
-          warn!("Unknown command");
+    if let Some(cmd) = (&queue.pending_action).as_ref().map(|cmd| cmd.clone()) {
+      // pending action, try and execute it
+      if process_cmd(&cmd, &mut character, &mut queue, transform, dash, &mut player, true) {
+        queue.pending_action = None;
+        queue.pending_action_timer.reset();
+      } else {
+        queue.pending_action_timer.tick(time.delta());
+        if queue.pending_action_timer.just_finished() {
+          queue.pending_action = None;
+          queue.pending_action_timer.reset();
         }
       }
     }
@@ -382,35 +423,9 @@ fn move_player(mut qry: Query<(&PlayerComponent, &mut Movement), Changed<PlayerC
   for (player, mut mov) in &mut qry.iter_mut() {
     if let PlayerStateMachine::Running(target) = player.state {
       mov.target = Some(target);
-    } else if let PlayerStateMachine::RunningPath(path) = &player.state {
-      let mut paths = path.clone();
-      let first_waypoint = paths.remove(0);
-      mov.target = Some(first_waypoint);
-      mov.path_backlog = paths;
     } else {
       mov.target = None;
       mov.path_backlog.clear();
-    }
-  }
-}
-
-fn move_update_player(
-  mut qry: Query<
-    (
-      &PlayerComponent,
-      &mut TopDownCharacter<PlayerAnimationState>,
-      &Movement,
-      &Transform,
-    ),
-    Changed<Movement>,
-  >,
-) {
-  for (player, mut character, mov, transform) in &mut qry.iter_mut() {
-    if let PlayerStateMachine::RunningPath(_) = player.state {
-      if let Some(target) = mov.target {
-        let dir = (target - transform.translation.xy()).normalize();
-        character.direction_vec = dir;
-      }
     }
   }
 }
@@ -428,15 +443,21 @@ fn stop_when_destination_reached(
 }
 
 fn start_dash_player(
-  mut qry: Query<(&PlayerComponent, &mut PlayerDash), Changed<PlayerComponent>>,
+  mut qry: Query<(&PlayerComponent, &mut PlayerDash, &mut Transform), Changed<PlayerComponent>>,
 ) {
-  for (player, mut dash) in &mut qry.iter_mut() {
-    if let PlayerStateMachine::Dashing(_) = &player.state {
+  for (player, mut dash, mut transform) in &mut qry.iter_mut() {
+    if let PlayerStateMachine::Dashing(target) = &player.state {
       if player.version > dash.player_state_version {
-        dash.player_state_version = player.version;
+        dash.origin = transform.translation.xy();
+        dash.direction = (target.clone() - dash.origin).normalize();
+        dash.distance = (target.clone() - dash.origin).length();
         dash.timer = Timer::from_seconds(dash.dash_duration, false);
         dash.cd_timer = Timer::from_seconds(dash.cooldown, false);
         dash.on_cooldown = true;
+        dash.player_state_version = player.version;
+
+        transform.scale.x = 0.03;
+        transform.scale.y = 0.03;
       }
     }
   }
@@ -447,15 +468,16 @@ fn dash_player(
   mut evts: EventWriter<PlayerCommand>,
 ) {
   for (player, mut transform, mut dash) in &mut qry.iter_mut() {
-    let speed = dash.dash_speed;
+    if let PlayerStateMachine::Dashing(_) = &player.state {
+      let increments = (dash.direction * dash.distance) / dash.dash_duration;
 
-    if let PlayerStateMachine::Dashing(dir) = &player.state {
+      transform.translation.x += increments.x * time.delta_seconds();
+      transform.translation.y += increments.y * time.delta_seconds();
       dash.timer.tick(time.delta());
       if dash.timer.just_finished() {
         evts.send(PlayerCommand::Stop);
-      } else {
-        transform.translation.x += dir.x * speed * time.delta_seconds();
-        transform.translation.y += dir.y * speed * time.delta_seconds();
+        transform.scale.x = 0.1;
+        transform.scale.y = 0.1;
       }
     } else {
       dash.cd_timer.tick(time.delta());
@@ -476,12 +498,16 @@ impl Plugin for PlayerPlugin {
       .add_system_set(SystemSet::on_enter(LevelState::Loaded).with_system(spawn_player))
       .add_system_set(
         SystemSet::on_update(LevelState::Loaded)
-          .with_system(read_input)
-          .with_system(move_player)
-          .with_system(stop_when_destination_reached)
-          .with_system(update_state)
-          .with_system(start_dash_player)
-          .with_system(dash_player)
+          .with_system(read_input.label("input"))
+          .with_system(update_state.label("update_state").after("input"))
+          .with_system(move_player.label("update_move").after("update_state"))
+          .with_system(
+            stop_when_destination_reached
+              .label("stop_move")
+              .after("update_move"),
+          )
+          .with_system(start_dash_player.label("start_dash").after("update_state"))
+          .with_system(dash_player.label("update_dash").after("start_dash"))
           .with_system(sync_spells)
           .with_system(run_spells),
       );

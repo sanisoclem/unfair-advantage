@@ -108,8 +108,9 @@ pub fn generate_level(
           .with_group(PhysicsLayers::World)
           .with_mask(PhysicsLayers::Enemies)
           .with_mask(PhysicsLayers::Attacks)
-          .with_mask(PhysicsLayers::Player)
+          .with_mask(PhysicsLayers::MovementSensor)
           .with_mask(PhysicsLayers::Corpses)
+
       )
       .insert(CollisionShape::Cuboid {
         half_extends: Vec3::new(

@@ -183,46 +183,29 @@ fn read_input(
   if let Ok((_player, transform, shape)) = qry.get_single_mut() {
     let player_pos = transform.translation.xy();
     if mouse_button_input.just_pressed(MouseButton::Left) {
-      let from = Point {
-        x: player_pos.x as i32 / 16,
-        y: player_pos.y as i32 / 16,
-      };
-      let to = Point {
-        x: mouse_info.world_pos2.x as i32 / 16,
-        y: mouse_info.world_pos2.y as i32 / 16,
+      let result = physics_world.shape_cast_with_filter(
+        &shape,
+        Vec3::from((transform.translation.xy(), 0.)),
+        Quat::IDENTITY,
+        mouse_info.world_pos3 - Vec3::from((transform.translation.xy(), 0.)),
+        CollisionLayers::none()
+          .with_group(PhysicsLayers::MovementSensor)
+          .with_mask(PhysicsLayers::World),
+        |_| true,
+      );
+      let pos = match result {
+        Some(hit) => match hit.collision_type {
+          ShapeCastCollisionType::Collided(info) => Some(
+            (info.self_end_position.xy() - transform.translation.xy()) * 0.9
+              + transform.translation.xy(),
+          ),
+          _ => None,
+        },
+        None => Some(mouse_info.world_pos2),
       };
 
-      if let Some(route) = level.get_path(from, to) {
-        evts.send(PlayerCommand::MovePath(
-          route
-            .into_iter()
-            .map(|p| Vec2::new(p.x as f32 * 16.0, p.y as f32 * 16.0))
-            .collect(),
-        ));
-      } else {
-        let result = physics_world.shape_cast_with_filter(
-          &shape,
-          Vec3::from((transform.translation.xy(), 0.)),
-          Quat::IDENTITY,
-          mouse_info.world_pos3 - Vec3::from((transform.translation.xy(), 0.)),
-          CollisionLayers::none()
-            .with_group(PhysicsLayers::MovementSensor)
-            .with_mask(PhysicsLayers::World),
-          |_| true,
-        );
-        let pos = match result {
-          Some(hit) => match hit.collision_type {
-            ShapeCastCollisionType::Collided(info) => Some(
-              (info.self_end_position.xy() - transform.translation.xy()) * 0.9
-                + transform.translation.xy(),
-            ),
-            _ => None,
-          },
-          None => Some(mouse_info.world_pos2),
-        };
-        if let Some(target_pos) = pos {
-          evts.send(PlayerCommand::Move(target_pos));
-        }
+      if let Some(target_pos) = pos {
+        evts.send(PlayerCommand::Move(target_pos));
       }
     }
     if mouse_button_input.just_pressed(MouseButton::Right) {
@@ -411,7 +394,17 @@ fn move_player(mut qry: Query<(&PlayerComponent, &mut Movement), Changed<PlayerC
   }
 }
 
-fn move_update_player(mut qry: Query<(&PlayerComponent, &mut TopDownCharacter<PlayerAnimationState>, &Movement, &Transform), Changed<Movement>>) {
+fn move_update_player(
+  mut qry: Query<
+    (
+      &PlayerComponent,
+      &mut TopDownCharacter<PlayerAnimationState>,
+      &Movement,
+      &Transform,
+    ),
+    Changed<Movement>,
+  >,
+) {
   for (player, mut character, mov, transform) in &mut qry.iter_mut() {
     if let PlayerStateMachine::RunningPath(_) = player.state {
       if let Some(target) = mov.target {

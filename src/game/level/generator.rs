@@ -55,6 +55,7 @@ pub struct LevelTile {
   pub tile_type: TileType,
   pub wall_type: WallType,
   pub is_spawn_point: bool,
+  pub spawned: bool
 }
 
 impl Level {
@@ -280,6 +281,17 @@ impl Level {
     })
   }
 
+  pub fn get_tiles_mut(&mut self) -> impl Iterator<Item = (i32, i32, &mut LevelTile)> {
+    self.tiles.iter_mut().enumerate().flat_map(|(x, ys)| {
+      ys.iter_mut()
+        .enumerate()
+        .map(move |(y, t)| (x as i32, y as i32, t))
+    })
+  }
+  pub fn get_tile_mut(&mut self, x: i32, y: i32) -> &mut LevelTile {
+    &mut self.tiles[x as usize][y as usize]
+  }
+
   fn calculate_collission_shapes(&mut self) {
     let mut rects = self
       .get_tiles()
@@ -314,7 +326,7 @@ impl Level {
 
   fn calculate_spawn_points(&mut self, rng: &mut StdRng) {
     let mut spawn_points: Vec<Point> = Vec::new();
-    let min_dist = 2;
+    let min_dist = 1;
     let num_rooms = self.rooms.len();
     self.rooms.sort_by_key(|r| r.centre.y);
     self.exit_point = self.rooms[num_rooms- 1].centre;

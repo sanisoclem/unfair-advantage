@@ -1,4 +1,9 @@
 
+![thumbnail](./assets_raw/thumbnail.png)
+
+Submission for the Bevy Game Jam #1
+ - https://itch.io/jam/bevy-jam-1
+ - https://sanisoclem.itch.io/slime-horde
 
 ```bash
 $ cargo run --release
